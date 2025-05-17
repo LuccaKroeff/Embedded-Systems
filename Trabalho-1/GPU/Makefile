@@ -11,5 +11,7 @@ clean:
 	rm -f $(BIN)
 
 test: all
-	@echo "Testando GPU..."
-	@for bin in $(BIN); do "Executando $$bin:"; ./$$bin; echo ""; done
+	@echo "\n================================"
+	@echo "Testando executáveis em GPU/..."
+	@for bin in $(BIN); do echo "\nExecutando $$bin:"; ./$$bin; done
+	@echo "================================\n"
