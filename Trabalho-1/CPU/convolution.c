@@ -1,78 +1,82 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <time.h>
 
-#define WIDTH 5
-#define HEIGHT 5
-#define KERNEL_SIZE 3
-#define FREQ_CPU_HZ 4.2e9
+#define WIDTH 3840
+#define HEIGHT 2160
+#define CHANNELS 3  // RGB
 
-double get_elapsed_time(struct timespec start, struct timespec end) {
-    return (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-}
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
-void convolve2D(unsigned char input[HEIGHT][WIDTH], float kernel[KERNEL_SIZE][KERNEL_SIZE], unsigned char output[HEIGHT][WIDTH]) {
-    int pad = KERNEL_SIZE / 2;
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
 
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            float sum = 0.0;
-
-            for (int ky = 0; ky < KERNEL_SIZE; ky++) {
-                for (int kx = 0; kx < KERNEL_SIZE; kx++) {
-                    int ix = x + kx - pad;
-                    int iy = y + ky - pad;
-
-                    if (ix >= 0 && ix < WIDTH && iy >= 0 && iy < HEIGHT) {
-                        sum += input[iy][ix] * kernel[ky][kx];
+// Aplica convolução com um kernel 3x3
+void applyConvolution(unsigned char* input, unsigned char* output, int width, int height, int channels, float kernel[3][3]) {
+    int offset = 1;
+    for (int y = offset; y < height - offset; y++) {
+        for (int x = offset; x < width - offset; x++) {
+            for (int c = 0; c < channels; c++) {
+                float sum = 0.0f;
+                for (int ky = 0; ky < 3; ky++) {
+                    for (int kx = 0; kx < 3; kx++) {
+                        int px = x + kx - offset;
+                        int py = y + ky - offset;
+                        int idx = (py * width + px) * channels + c;
+                        sum += input[idx] * kernel[ky][kx];
                     }
                 }
+                int outIdx = (y * width + x) * channels + c;
+                output[outIdx] = (unsigned char)MIN(MAX((int)sum, 0), 255);
             }
-
-            if (sum < 0) sum = 0;
-            if (sum > 255) sum = 255;
-            output[y][x] = (unsigned char)sum;
         }
     }
 }
 
 int main() {
-    unsigned char image[HEIGHT][WIDTH] = {
-        { 10, 50, 80, 50, 10 },
-        { 60, 120, 200, 120, 60 },
-        { 90, 180, 255, 180, 90 },
-        { 60, 120, 200, 120, 60 },
-        { 10, 50, 80, 50, 10 }
-    };
+    unsigned char* image = malloc(WIDTH * HEIGHT * CHANNELS);
+    unsigned char* output = malloc(WIDTH * HEIGHT * CHANNELS);
 
-    float kernel[KERNEL_SIZE][KERNEL_SIZE] = {
+    if (!image || !output) {
+        printf("Erro ao alocar memória.\n");
+        return 1;
+    }
+
+    // Zera toda a imagem
+    for (int i = 0; i < WIDTH * HEIGHT * CHANNELS; i++) {
+        image[i] = 0;
+    }
+
+    // Mock: insere 100 pontos RGB brancos em posições aleatórias
+    srand((unsigned int)time(NULL));
+    for (int i = 0; i < 100; i++) {
+        int x = rand() % WIDTH;
+        int y = rand() % HEIGHT;
+        int idx = (y * WIDTH + x) * CHANNELS;
+        image[idx + 0] = 255;  // R
+        image[idx + 1] = 255;  // G
+        image[idx + 2] = 255;  // B
+    }
+
+    // Kernel Laplaciano
+    float kernel[3][3] = {
         { -1, -1, -1 },
         { -1,  8, -1 },
         { -1, -1, -1 }
     };
 
-    unsigned char output[HEIGHT][WIDTH];
+    clock_t start = clock();
+    applyConvolution(image, output, WIDTH, HEIGHT, CHANNELS, kernel);
+    clock_t end = clock();
 
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Convolução concluída em %.5f segundos.\n", time_spent);
 
-    convolve2D(image, kernel, output);
-
-    clock_gettime(CLOCK_MONOTONIC, &end);
-
-    double elapsed = get_elapsed_time(start, end);
-    long long cycles = (long long)(elapsed * FREQ_CPU_HZ);
-
-    printf("Resultado da convolução:\n");
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            printf("%3d ", output[y][x]);
-        }
-        printf("\n");
-    }
-
-    printf("Tempo de execução: %.9f segundos\n", elapsed);
-    printf("Estimativa de ciclos: %lld\n", cycles);
-
+    free(image);
+    free(output);
     return 0;
 }
