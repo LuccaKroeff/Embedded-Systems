@@ -1,5 +1,5 @@
 NVCC = nvcc
-SRC = binary_search.cu convolution.cu
+SRC = sudoku.cu convolution.cu
 BIN = $(SRC:.cu=)
 
 all: $(BIN)

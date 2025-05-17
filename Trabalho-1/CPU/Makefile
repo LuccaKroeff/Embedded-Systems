@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS =
-SRC = binary_search.c convolution.c
+SRC = sudoku.c convolution.c
 BIN = $(SRC:.c=)
 
 all: $(BIN)
