@@ -69,12 +69,19 @@ int main() {
         { -1, -1, -1 }
     };
 
+    const double cpu_frequency_hz = 4.2e9;  // 4.2 GHz
+
     clock_t start = clock();
     applyConvolution(image, output, WIDTH, HEIGHT, CHANNELS, kernel);
     clock_t end = clock();
 
-    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("Convolução concluída em %.5f segundos.\n", time_spent);
+    clock_t ticks = end - start;
+    double cycles = (double)ticks * (cpu_frequency_hz / CLOCKS_PER_SEC);
+    double time_sec = cycles / cpu_frequency_hz;
+
+    printf("Ticks do clock: %ld\n", (long)ticks);
+    printf("Número estimado de ciclos: %.0f\n", cycles);
+    printf("Tempo de execução (calculado via ciclos e frequência): %.8f segundos\n", time_sec);
 
     free(image);
     free(output);

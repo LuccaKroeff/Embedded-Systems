@@ -86,6 +86,8 @@ int main() {
     dim3 gridSize((WIDTH + blockSize.x - 1) / blockSize.x,
                   (HEIGHT + blockSize.y - 1) / blockSize.y);
 
+    const double gpu_frequency_hz = 2.5e9;  // 2.5 GHz
+
     clock_t start = clock();
     applyConvolutionCUDA<<<gridSize, blockSize>>>(d_image, d_output, WIDTH, HEIGHT, CHANNELS, d_kernel);
     cudaDeviceSynchronize();
@@ -94,8 +96,14 @@ int main() {
     // Copia resultado para a CPU
     cudaMemcpy(h_output, d_output, imgSize, cudaMemcpyDeviceToHost);
 
-    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("Convolução (CUDA) concluída em %.5f segundos.\n", time_spent);
+    clock_t ticks = end - start;
+    double cycles = (double)ticks * (gpu_frequency_hz / CLOCKS_PER_SEC);
+    double time_sec = cycles / gpu_frequency_hz;
+
+    printf("Ticks do clock: %ld\n", (long)ticks);
+    printf("Número estimado de ciclos: %.0f\n", cycles);
+    printf("Tempo de execução (calculado via ciclos e frequência): %.8f segundos\n", time_sec);
+
 
     // Libera memória
     cudaFree(d_image);

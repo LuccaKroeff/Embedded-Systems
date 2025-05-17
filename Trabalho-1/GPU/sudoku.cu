@@ -134,6 +134,8 @@ int main() {
     cudaMemcpy(d_board, board, N*N*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_solved, &h_solved, sizeof(int), cudaMemcpyHostToDevice);
 
+    const double gpu_frequency_hz = 2.5e9;  // 2.5 GHz
+
     clock_t start = clock();
 
     sudokuKernel<<<1, N>>>(d_board, d_solution, firstRow, firstCol, d_solved);
@@ -141,7 +143,10 @@ int main() {
     cudaDeviceSynchronize();
 
     clock_t end = clock();
-    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+
+    clock_t ticks = end - start;
+    double cycles = (double)ticks * (gpu_frequency_hz / CLOCKS_PER_SEC);
+    double time_sec = cycles / gpu_frequency_hz;
 
     cudaMemcpy(h_solution, d_solution, N*N*sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(&h_solved, d_solved, sizeof(int), cudaMemcpyDeviceToHost);
@@ -153,10 +158,13 @@ int main() {
             solvedBoard[i / N][i % N] = h_solution[i];
         }
         printBoard(solvedBoard);
-        printf("\nTempo para resolver: %.5f segundos\n", time_spent);
     } else {
         printf("Nenhuma solução encontrada.\n");
     }
+
+    printf("Ticks do clock: %ld\n", (long)ticks);
+    printf("Número estimado de ciclos: %.0f\n", cycles);
+    printf("Tempo de execução (calculado via ciclos e frequência): %.8f segundos\n", time_sec);
 
     cudaFree(d_board);
     cudaFree(d_solution);

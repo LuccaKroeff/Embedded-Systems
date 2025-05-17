@@ -75,11 +75,15 @@ int main() {
         {0,0,0, 0,8,0, 0,7,9}
     };
 
+    const double cpu_frequency_hz = 4.2e9;  // 4.2 GHz
+
     clock_t start = clock();
     int solved = solveSudoku(board);
     clock_t end = clock();
 
-    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    clock_t ticks = end - start;
+    double cycles = (double)ticks * (cpu_frequency_hz / CLOCKS_PER_SEC);
+    double time_sec = cycles / cpu_frequency_hz;
 
     if (solved) {
         printf("Sudoku resolvido:\n");
@@ -88,7 +92,9 @@ int main() {
         printf("Nenhuma solução existe.\n");
     }
 
-    printf("Tempo para resolver: %.5f segundos\n", time_spent);
+    printf("Ticks do clock: %ld\n", (long)ticks);
+    printf("Número estimado de ciclos: %.0f\n", cycles);
+    printf("Tempo de execução (calculado via ciclos e frequência): %.8f segundos\n", time_sec);
 
     return 0;
 }
