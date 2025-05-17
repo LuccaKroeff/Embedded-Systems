@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define WIDTH 5
 #define HEIGHT 5
 #define KERNEL_SIZE 3
+#define FREQ_CPU_HZ 4.2e9
 
-// Função para aplicar convolução
+double get_elapsed_time(struct timespec start, struct timespec end) {
+    return (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+}
+
 void convolve2D(unsigned char input[HEIGHT][WIDTH], float kernel[KERNEL_SIZE][KERNEL_SIZE], unsigned char output[HEIGHT][WIDTH]) {
     int pad = KERNEL_SIZE / 2;
 
@@ -24,17 +29,14 @@ void convolve2D(unsigned char input[HEIGHT][WIDTH], float kernel[KERNEL_SIZE][KE
                 }
             }
 
-            // Clipping do valor resultante entre 0 e 255
             if (sum < 0) sum = 0;
             if (sum > 255) sum = 255;
-
             output[y][x] = (unsigned char)sum;
         }
     }
 }
 
 int main() {
-    // Exemplo de imagem 5x5 (tons de cinza)
     unsigned char image[HEIGHT][WIDTH] = {
         { 10, 50, 80, 50, 10 },
         { 60, 120, 200, 120, 60 },
@@ -43,7 +45,6 @@ int main() {
         { 10, 50, 80, 50, 10 }
     };
 
-    // Kernel exemplo: Filtro de detecção de borda (Sobel simplificado)
     float kernel[KERNEL_SIZE][KERNEL_SIZE] = {
         { -1, -1, -1 },
         { -1,  8, -1 },
@@ -52,9 +53,16 @@ int main() {
 
     unsigned char output[HEIGHT][WIDTH];
 
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     convolve2D(image, kernel, output);
 
-    // Mostrar saída
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    double elapsed = get_elapsed_time(start, end);
+    long long cycles = (long long)(elapsed * FREQ_CPU_HZ);
+
     printf("Resultado da convolução:\n");
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
@@ -62,6 +70,9 @@ int main() {
         }
         printf("\n");
     }
+
+    printf("Tempo de execução: %.9f segundos\n", elapsed);
+    printf("Estimativa de ciclos: %lld\n", cycles);
 
     return 0;
 }
