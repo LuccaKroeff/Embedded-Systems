@@ -2,7 +2,7 @@
 #include <cuda_runtime.h>
 #include <time.h>
 
-#define N 16
+#define N 9
 #define UNASSIGNED 0
 
 // Verifica se é seguro colocar num em board[row][col]
@@ -12,11 +12,11 @@ __device__ int isSafeDevice(int board[N][N], int row, int col, int num) {
         if (board[x][col] == num) return 0;
     }
 
-    int boxStartRow = row - row % 4;
-    int boxStartCol = col - col % 4;
+    int boxStartRow = row - row % 3;
+    int boxStartCol = col - col % 3;
 
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
             if (board[boxStartRow + i][boxStartCol + j] == num)
                 return 0;
 
@@ -94,25 +94,17 @@ void printBoard(int board[N][N]) {
 int main() {
     cudaDeviceSetLimit(cudaLimitStackSize, 32768);
     int board[N][N] = {
-        {0, 0, 0, 0,  0, 0, 3, 0,  0, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 7, 0,  0, 0, 0, 0},
-        {0, 0, 0, 6,  0, 0, 0, 0,  0, 9, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  2, 0, 0, 0,  0, 0, 0, 0,  8, 0, 0, 0},
+        {5,3,0, 0,7,0, 0,0,0},
+        {6,0,0, 1,9,5, 0,0,0},
+        {0,9,8, 0,0,0, 0,6,0},
 
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 3, 0, 0,  0, 7, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 4},
-        {7, 0, 0, 0,  0, 0, 0, 5,  0, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  4, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0},
+        {8,0,0, 0,6,0, 0,0,3},
+        {4,0,0, 8,0,3, 0,0,1},
+        {7,0,0, 0,2,0, 0,0,6},
 
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 5, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  7, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 6, 0,  0, 0, 0, 0,  0, 0, 0, 3,  0, 0, 0, 0},
-
-        {0, 0, 0, 0,  0, 0, 0, 0,  8, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  6, 0, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 5, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0}
+        {0,6,0, 0,0,0, 2,8,0},
+        {0,0,0, 4,1,9, 0,0,5},
+        {0,0,0, 0,8,0, 0,7,9}
     };
 
     // Encontrar primeiro espaço vazio
@@ -155,7 +147,7 @@ int main() {
     cudaMemcpy(&h_solved, d_solved, sizeof(int), cudaMemcpyDeviceToHost);
 
     if (h_solved) {
-        printf("Sudoku 16x16 resolvido com CUDA:\n");
+        printf("Sudoku 9x9 resolvido com CUDA:\n");
         int solvedBoard[N][N];
         for (int i = 0; i < N*N; i++) {
             solvedBoard[i / N][i % N] = h_solution[i];

@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include <time.h>  // Incluído para medir o tempo
+#include <time.h>
 
-#define N 16
+#define N 9
 
 int isSafe(int board[N][N], int row, int col, int num) {
     for (int x = 0; x < N; x++) {
@@ -10,10 +10,10 @@ int isSafe(int board[N][N], int row, int col, int num) {
     for (int x = 0; x < N; x++) {
         if (board[x][col] == num) return 0;
     }
-    int startRow = row - row % 4;  // corrigido de 3 para 4
-    int startCol = col - col % 4;  // corrigido de 3 para 4
-    for (int i = 0; i < 4; i++) {  // 4x4 bloco
-        for (int j = 0; j < 4; j++) {
+    int startRow = row - row % 3;
+    int startCol = col - col % 3;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
             if (board[i + startRow][j + startCol] == num) return 0;
         }
     }
@@ -34,7 +34,7 @@ int solveSudoku(int board[N][N]) {
     }
     if (!emptyFound) return 1;
 
-    for (int num = 1; num <= 16; num++) {  // corrigido de 9 para 16
+    for (int num = 1; num <= 9; num++) {
         if (isSafe(board, row, col, num)) {
             board[row][col] = num;
             if (solveSudoku(board)) return 1;
@@ -62,30 +62,22 @@ void printBoard(int board[N][N]) {
 
 int main() {
     int board[N][N] = {
-        {0, 0, 0, 0,  0, 0, 3, 0,  0, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 7, 0,  0, 0, 0, 0},
-        {0, 0, 0, 6,  0, 0, 0, 0,  0, 9, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  2, 0, 0, 0,  0, 0, 0, 0,  8, 0, 0, 0},
+        {5,3,0, 0,7,0, 0,0,0},
+        {6,0,0, 1,9,5, 0,0,0},
+        {0,9,8, 0,0,0, 0,6,0},
 
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 3, 0, 0,  0, 7, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 4},
-        {7, 0, 0, 0,  0, 0, 0, 5,  0, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  4, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0},
+        {8,0,0, 0,6,0, 0,0,3},
+        {4,0,0, 8,0,3, 0,0,1},
+        {7,0,0, 0,2,0, 0,0,6},
 
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 5, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  7, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 6, 0,  0, 0, 0, 0,  0, 0, 0, 3,  0, 0, 0, 0},
-
-        {0, 0, 0, 0,  0, 0, 0, 0,  8, 0, 0, 0,  0, 0, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  6, 0, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 5, 0, 0},
-        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0}
+        {0,6,0, 0,0,0, 2,8,0},
+        {0,0,0, 4,1,9, 0,0,5},
+        {0,0,0, 0,8,0, 0,7,9}
     };
 
-    clock_t start = clock();  // Início da medição
+    clock_t start = clock();
     int solved = solveSudoku(board);
-    clock_t end = clock();    // Fim da medição
+    clock_t end = clock();
 
     double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
 
