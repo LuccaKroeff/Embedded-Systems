@@ -1,0 +1,162 @@
+1) CPU GPU NPU
+{'cost_performance': 1.4933319999999999,
+ 'cost_energy': 66.07218,
+ 'edp': 0.363825374,
+ 'energy': 0.207704,
+ 'time': 8.09}
+2) NPU GPU NPU
+{'cost_performance': 3.1329599999999997,
+ 'cost_energy': 69.80319999999999,
+ 'edp': 0.9192844883999999,
+ 'energy': 0.22670200000000001,
+ 'time': 18.2712}
+3) CPU NPU NPU
+{'cost_performance': 37.144052,
+ 'cost_energy': 190.18738000000002,
+ 'edp': 253.3668288556,
+ 'energy': 1.192992,
+ 'time': 232.2168}
+4) NPU NPU NPU
+{'cost_performance': 38.783680000000004,
+ 'cost_energy': 193.91840000000002,
+ 'edp': 253.92228797,
+ 'energy': 1.2119900000000001,
+ 'time': 242.398}
+5) GPU GPU NPU
+{'cost_performance': 5.890879999999999,
+ 'cost_energy': 776.7527999999999,
+ 'edp': 20.344226643399995,
+ 'energy': 1.9619369999999998,
+ 'time': 18.7382}
+6) GPU NPU NPU
+{'cost_performance': 41.5416,
+ 'cost_energy': 900.8679999999998,
+ 'edp': 273.347230125,
+ 'energy': 2.9472249999999995,
+ 'time': 242.865}
+7) CPU GPU CPU
+{'cost_performance': 43.039732,
+ 'cost_energy': 2830.76418,
+ 'edp': 6022.998779249,
+ 'energy': 19.960279,
+ 'time': 305.80499999999995}
+8) NPU GPU CPU
+{'cost_performance': 44.67936,
+ 'cost_energy': 2834.4952,
+ 'edp': 6023.5542383634,
+ 'energy': 19.979277,
+ 'time': 315.9862}
+9) CPU NPU CPU
+{'cost_performance': 78.690452,
+ 'cost_energy': 2954.87938,
+ 'edp': 6276.0017827306,
+ 'energy': 20.945567,
+ 'time': 529.9318}
+10) NPU NPU CPU
+{'cost_performance': 80.33008000000001,
+ 'cost_energy': 2958.6104,
+ 'edp': 6276.557241845,
+ 'energy': 20.964565,
+ 'time': 540.1129999999999}
+11) GPU GPU CPU
+{'cost_performance': 47.43728,
+ 'cost_energy': 3541.4447999999998,
+ 'edp': 6042.9791805184,
+ 'energy': 21.714512000000003,
+ 'time': 316.4532}
+12) GPU NPU CPU
+{'cost_performance': 83.088,
+ 'cost_energy': 3665.56,
+ 'edp': 6295.982184,
+ 'energy': 22.6998,
+ 'time': 540.5799999999999}
+13) CPU CPU NPU
+{'cost_performance': 86.31165199999998,
+ 'cost_energy': 5546.08138,
+ 'edp': 24055.2829428556,
+ 'energy': 39.610092,
+ 'time': 615.5568}
+14) NPU CPU NPU
+{'cost_performance': 87.95127999999998,
+ 'cost_energy': 5549.812399999999,
+ 'edp': 24055.83840197,
+ 'energy': 39.62909,
+ 'time': 625.7379999999999}
+15) GPU CPU NPU
+{'cost_performance': 90.70919999999998,
+ 'cost_energy': 6256.761999999999,
+ 'edp': 24075.263344125,
+ 'energy': 41.364325,
+ 'time': 626.2049999999999}
+16) CPU CPU CPU
+{'cost_performance': 127.85805199999999,
+ 'cost_energy': 8310.773379999999,
+ 'edp': 30077.9178967306,
+ 'energy': 59.362667,
+ 'time': 913.2718}
+17) NPU CPU CPU
+{'cost_performance': 129.49768,
+ 'cost_energy': 8314.504399999998,
+ 'edp': 30078.473355845,
+ 'energy': 59.381665,
+ 'time': 923.453}
+18) GPU CPU CPU
+{'cost_performance': 132.2556,
+ 'cost_energy': 9021.453999999998,
+ 'edp': 30097.898298,
+ 'energy': 61.1169,
+ 'time': 923.92}
+19) CPU GPU GPU
+{'cost_performance': 61.062932,
+ 'cost_energy': 9762.99618,
+ 'edp': 3677.2529558890005,
+ 'energy': 24.429959,
+ 'time': 153.00300000000001}
+20) NPU GPU GPU
+{'cost_performance': 62.702560000000005,
+ 'cost_energy': 9766.727200000001,
+ 'edp': 3677.8084150034006,
+ 'energy': 24.448957,
+ 'time': 163.1842}
+21) CPU NPU GPU
+{'cost_performance': 96.713652,
+ 'cost_energy': 9887.11138,
+ 'edp': 3930.2559593706005,
+ 'energy': 25.415247,
+ 'time': 377.12980000000005}
+22) NPU NPU GPU
+{'cost_performance': 98.35328000000001,
+ 'cost_energy': 9890.842400000001,
+ 'edp': 3930.8114184850006,
+ 'energy': 25.434245,
+ 'time': 387.31100000000004}
+23) GPU GPU GPU
+{'cost_performance': 65.46048,
+ 'cost_energy': 10473.676800000001,
+ 'edp': 3697.2333571584004,
+ 'energy': 26.184192000000003,
+ 'time': 163.65120000000002}
+24) GPU NPU GPU
+{'cost_performance': 101.1112,
+ 'cost_energy': 10597.792000000001,
+ 'edp': 3950.2363606400004,
+ 'energy': 27.16948,
+ 'time': 387.778}
+25) CPU CPU GPU
+{'cost_performance': 145.881252,
+ 'cost_energy': 15243.00538,
+ 'edp': 27732.1720733706,
+ 'energy': 63.832347,
+ 'time': 760.4698000000001}
+26) NPU CPU GPU
+{'cost_performance': 147.52087999999998,
+ 'cost_energy': 15246.7364,
+ 'edp': 27732.727532484998,
+ 'energy': 63.851344999999995,
+ 'time': 770.6510000000001}
+27) GPU CPU GPU
+{'cost_performance': 150.2788,
+ 'cost_energy': 15953.686,
+ 'edp': 27752.15247464,
+ 'energy': 65.58658,
+ 'time': 771.1179999999999}
