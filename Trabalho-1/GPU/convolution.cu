@@ -95,7 +95,7 @@ int main() {
     cudaMemcpy(h_output, d_output, imgSize, cudaMemcpyDeviceToHost);
 
     double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("Convolução (CUDA) concluída em %.5f segundos.\n", time_spent);
+    printf("Convolução (CUDA) concluída em %.5f ms.\n", time_spent * 1000);
 
     // Libera memória
     cudaFree(d_image);

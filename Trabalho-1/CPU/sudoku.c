@@ -88,7 +88,7 @@ int main() {
         printf("Nenhuma solução existe.\n");
     }
 
-    printf("Tempo para resolver: %.5f segundos\n", time_spent);
+    printf("Tempo para resolver: %.5f ms\n", time_spent * 1000);
 
     return 0;
 }

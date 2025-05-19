@@ -70,7 +70,8 @@ def run_inference(image_paths, use_gpu=True):
         except Exception as e:
             print(f"Error processing {img_path}: {e}")
 
-    print(f"Total inference time: {total_time:.4f}s")
+    total_time *= 1000
+    print(f"Total inference time: {total_time:.4f}ms")
 
 # Example usage
 if __name__ == '__main__':

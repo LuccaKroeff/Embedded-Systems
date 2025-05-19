@@ -153,10 +153,11 @@ int main() {
             solvedBoard[i / N][i % N] = h_solution[i];
         }
         printBoard(solvedBoard);
-        printf("\nTempo para resolver: %.5f segundos\n", time_spent);
     } else {
         printf("Nenhuma solução encontrada.\n");
     }
+
+    printf("\nTempo para resolver: %.5f ms\n", time_spent * 1000);
 
     cudaFree(d_board);
     cudaFree(d_solution);

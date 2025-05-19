@@ -74,7 +74,7 @@ int main() {
     clock_t end = clock();
 
     double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("Convolução concluída em %.5f segundos.\n", time_spent);
+    printf("Convolução concluída em %.5f ms.\n", time_spent * 1000);
 
     free(image);
     free(output);
