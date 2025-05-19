@@ -125,8 +125,8 @@ for exec_type in ['Sequencial', 'Concorrente']:
     plt.scatter(subset['Tempo (s)'], subset['Custo ($)'], label=exec_type, alpha=0.7)
 
 plt.title('DSE: Tempo (s) vs Custo ($)')
-plt.xlabel('Tempo (s)')
-plt.ylabel('Custo ($)')
+plt.xlabel('Tempo (s)', fontsize=14)
+plt.ylabel('Custo ($)', fontsize=14)
 plt.legend()
 plt.grid(True)
 plt.savefig("grafico_dse_tempo_custo.png")
@@ -138,8 +138,8 @@ for exec_type in ['Sequencial', 'Concorrente']:
     plt.scatter(subset['Custo ($)'], subset['Energia (J)'], label=exec_type, alpha=0.7)
 
 plt.title('DSE: Custo ($) vs Energia (J)')
-plt.xlabel('Custo ($)')
-plt.ylabel('Energia (J)')
+plt.xlabel('Custo ($)', fontsize=14)
+plt.ylabel('Energia (J)', fontsize=14)
 plt.grid(True)
 plt.savefig("grafico_dse_custo_energia.png")
 
@@ -151,8 +151,8 @@ for exec_type in ['Sequencial', 'Concorrente']:
     plt.scatter(subset['Custo x Tempo ($.s)'], subset['Custo x Energia ($.J)'], label=exec_type, alpha=0.7)
 
 plt.title('DSE: Custo x Tempo vs Custo x Energia')
-plt.xlabel('Custo x Tempo ($.s)')
-plt.ylabel('Custo x Energia ($.J)')
+plt.xlabel('Custo x Tempo ($.s)', fontsize=14)
+plt.ylabel('Custo x Energia ($.J)', fontsize=14)
 plt.legend()
 plt.grid(True)
 plt.savefig("grafico_dse_custoXtempo_custoXenergia.png")
