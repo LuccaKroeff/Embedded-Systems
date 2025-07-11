@@ -1,0 +1,1 @@
+double get_time_sec();

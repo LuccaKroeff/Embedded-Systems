@@ -1,0 +1,1 @@
+int duckdb_benchmark();

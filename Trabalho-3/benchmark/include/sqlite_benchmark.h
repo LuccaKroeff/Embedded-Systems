@@ -1,0 +1,1 @@
+int sqlite_benchmark();
