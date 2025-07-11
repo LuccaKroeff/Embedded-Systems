@@ -1,100 +1,92 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "duckdb.h"
+#include <string.h>
 #include <time.h>
-#include "utils.h"
+#include <jansson.h>
+#include <duckdb.h>
+#include "duckdb_benchmark.h"
 
-#define N 10000
+#define DUCKDB_DB_NAME "benchmark.duckdb"
 
-
-void exec_or_die(duckdb_connection conn, const char *sql) {
-    duckdb_result res;
-    if (duckdb_query(conn, sql, &res) != DuckDBSuccess) {
-        fprintf(stderr, "DuckDB error: %s\n", duckdb_result_error(&res));
-        duckdb_destroy_result(&res);
-        exit(1);
+// Helper to execute a simple, non-timed query
+void exec_ddb_sql(duckdb_connection conn, const char *sql) {
+    duckdb_result result;
+    if (duckdb_query(conn, sql, &result) != DuckDBSuccess) {
+        fprintf(stderr, "DuckDB query error: %s\n", duckdb_result_error(&result));
     }
-    duckdb_destroy_result(&res);
+    duckdb_destroy_result(&result);
 }
 
-int duckdb_benchmark() {
+void run_duckdb_benchmarks(const char *json_path, char *db_name) {
+    printf("--- Running DuckDB Benchmarks ---\n");
+
+    json_error_t error;
+    json_t *root = json_load_file(json_path, 0, &error);
+    if (!root) {
+        fprintf(stderr, "Error: on line %d: %s\n", error.line, error.text);
+        return;
+    }
+
+    db_name = (db_name == NULL) ? DUCKDB_DB_NAME : db_name;
+
     duckdb_database db;
     duckdb_connection conn;
-
-    if (duckdb_open(":memory:", &db) != DuckDBSuccess || duckdb_connect(db, &conn) != DuckDBSuccess) {
-        fprintf(stderr, "Failed to open DuckDB.\n");
-        return 1;
+    if (duckdb_open(db_name, &db) != DuckDBSuccess || duckdb_connect(db, &conn) != DuckDBSuccess) {
+        fprintf(stderr, "Error connecting to DuckDB\n");
+        return;
     }
 
-    exec_or_die(conn, "CREATE TABLE t1(a INTEGER PRIMARY KEY, b TEXT, c TEXT);");
+    size_t index;
+    json_t *value;
+    json_array_foreach(root, index, value) {
+        const char *name = json_string_value(json_object_get(value, "name"));
+        const char *sql = json_string_value(json_object_get(value, "query"));
+        json_t *iter_json = json_object_get(value, "iterations");
+        int iterations = iter_json ? json_integer_value(iter_json) : 1;
+        
+        printf("  Executing '%s'... ", name);
+        fflush(stdout);
 
-    // Bulk inserts
-    double start = get_time_sec();
-    exec_or_die(conn, "BEGIN TRANSACTION;");
-    for (int i = 1; i <= N; i++) {
-        char sql[256];
-        snprintf(sql, sizeof(sql),
-                 "INSERT INTO t1(a, b, c) VALUES (%d, 'value_b', 'value_c');", i);
-        duckdb_query(conn, sql, NULL);
+        struct timespec start, end;
+        clock_gettime(CLOCK_MONOTONIC, &start);
+
+        if (iterations > 1) { // Prepared statement loop
+            duckdb_prepared_statement stmt;
+            if (duckdb_prepare(conn, sql, &stmt) != DuckDBSuccess) {
+                fprintf(stderr, "Error preparing statement: %s\n", duckdb_prepare_error(stmt));
+                continue;
+            }
+
+            exec_ddb_sql(conn, "BEGIN TRANSACTION;");
+            for (int i = 1; i <= iterations; i++) {
+                char name_buf[50];
+                char email_buf[50];
+                sprintf(name_buf, "user%d", i);
+                sprintf(email_buf, "user%d@example.com", i);
+
+                duckdb_bind_int32(stmt, 1, i);
+                duckdb_bind_varchar(stmt, 2, name_buf);
+                duckdb_bind_varchar(stmt, 3, email_buf);
+                
+                if (duckdb_execute_prepared(stmt, NULL) != DuckDBSuccess) {
+                    fprintf(stderr, "Execution failed: %s\n", duckdb_result_error(NULL));
+                }
+            }
+            exec_ddb_sql(conn, "COMMIT;");
+            duckdb_destroy_prepare(&stmt);
+        } else { // Simple query
+            exec_ddb_sql(conn, sql);
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        double time_spent = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+        printf("Done in %.4f seconds.\n", time_spent);
     }
-    exec_or_die(conn, "COMMIT;");
-    double end = get_time_sec();
-    printf("Insert %d rows: %.3f sec\n", N, end - start);
-
-    // Point SELECTs
-    start = get_time_sec();
-    for (int i = 1; i <= N; i += 1000) {
-        char sql[128];
-        snprintf(sql, sizeof(sql), "SELECT * FROM t1 WHERE a = %d;", i);
-        exec_or_die(conn, sql);
-    }
-    end = get_time_sec();
-    printf("Point SELECTs: %.3f sec\n", end - start);
-
-    // Range SELECTs
-    start = get_time_sec();
-    for (iThe sorting columns are serialized into a fixed-size byte representation that is naturally sortable (i.e. memcmp will give the correct order). For variable length sorting columns (e.g. strings) we serialize a fixed-size prefix. An index is appended to this sorting column.
-    nt i = 1; i <= N; i += 2000) {
-        char sql[128];
-        snprintf(sql, sizeof(sql), "SELECT * FROM t1 WHERE a BETWEEN %d AND %d;", i, i + 500);
-        exec_or_die(conn, sql);
-    }
-    end = get_time_sec();
-    printf("Range SELECTs: %.3f sec\n", end - start);
-
-    // Aggregation
-    start = get_time_sec();
-    exec_or_die(conn, "SELECT COUNT(*) FROM t1;");
-    end = get_time_sec();
-    printf("COUNT(*): %.3f sec\n", end - start);
-
-    // Updates
-    start = get_time_sec();
-    exec_or_die(conn, "BEGIN TRANSACTION;");
-    for (int i = 1; i <= N; i += 1000) {
-        char sql[128];
-        snprintf(sql, sizeof(sql),
-                 "UPDATE t1 SET b = 'updated' WHERE a = %d;", i);
-        exec_or_die(conn, sql);
-    }
-    exec_or_die(conn, "COMMIT;");
-    end = get_time_sec();
-    printf("UPDATEs: %.3f sec\n", end - start);
-
-    // Deletes
-    start = get_time_sec();
-    exec_or_die(conn, "BEGIN TRANSACTION;");
-    for (int i = 1; i <= N; i += 2000) {
-        char sql[128];
-        snprintf(sql, sizeof(sql),
-                 "DELETE FROM t1 WHERE a = %d;", i);
-        exec_or_die(conn, sql);
-    }
-    exec_or_die(conn, "COMMIT;");
-    end = get_time_sec();
-    printf("DELETEs: %.3f sec\n", end - start);
 
     duckdb_disconnect(&conn);
     duckdb_close(&db);
-    return 0;
+    json_decref(root);
+    remove(DUCKDB_DB_NAME);
+    //remove(strcat(strdup(DUCKDB_DB_NAME), ".wal"));
+    printf("--------------------------------\n\n");
 }

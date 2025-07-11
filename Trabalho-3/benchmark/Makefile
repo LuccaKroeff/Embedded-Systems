@@ -1,7 +1,7 @@
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -Iinclude
-LDFLAGS = -Llib -Wl,-rpath=lib
+LDFLAGS = -Llib -Wl,-rpath=lib -ljansson
 
 # Directories
 SRC_DIR := src
