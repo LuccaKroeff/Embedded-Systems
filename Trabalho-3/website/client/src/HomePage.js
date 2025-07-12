@@ -62,25 +62,45 @@ function HomePage() {
 
   const pairs = generatePairs(selectedFields);
 
-  const exportChartImage = (index) => {
-    const chart = chartRefs.current[index];
-    if (chart) {
-      const link = document.createElement('a');
-      link.href = chart.toBase64Image();
-      link.download = `chart-${index + 1}.png`;
-      link.click();
-    }
-  };
+const exportChartImage = (index) => {
+  const chartInstance = chartRefs.current[index];
+  if (chartInstance && chartInstance.canvas) {
+    const originalCanvas = chartInstance.canvas;
+    const width = originalCanvas.width;
+    const height = originalCanvas.height;
+
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = width;
+    exportCanvas.height = height;
+    const ctx = exportCanvas.getContext("2d");
+
+    // Fundo branco
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    // Copia o conteúdo original
+    ctx.drawImage(originalCanvas, 0, 0);
+
+    // Exporta como PNG
+    const url = exportCanvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = `chart-${index + 1}.png`;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
 
   return (
     <div className="flex flex-col items-center justify-between min-h-screen text-center bg-gray-100">
       <header className="w-full py-8 border-b bg-white border-gray-300 shadow">
-        <h1 className="text-4xl font-bold">PlotIt! 📊</h1>
+        <h1 className="text-4xl font-bold">Plot It! 📊</h1>
       </header>
 
       {mode === 'select' && (
         <main className="flex flex-col items-center justify-center flex-grow">
-          <p className="mb-4 text-2xl">Place your CSV and we will <strong>PlotIt!</strong></p>
+          <p className="mb-4 text-2xl">Place your CSV and we will <strong>Plot It!</strong></p>
           <div
             {...getRootProps()}
             className="p-4 border border-dashed border-gray-400 rounded-md cursor-pointer hover:bg-gray-200 bg-white"
@@ -164,13 +184,13 @@ function HomePage() {
                   <Scatter
                     data={chartData}
                     options={chartOptions}
-                    ref={(el) => chartRefs.current[index] = el?.chartInstance || el?.chart || null}
+                    ref={(el) => chartRefs.current[index] = el?.chartInstance || el?.chart || el}
                   />
                   <button
                     onClick={() => exportChartImage(index)}
                     className="mt-2 self-end px-2 py-1 text-xs bg-gray-200 text-black rounded hover:bg-gray-400 opacity-80"
                   >
-                    📥 Export as PNG
+                    📥 Download as PNG
                   </button>
                 </div>
               );
