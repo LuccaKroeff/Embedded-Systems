@@ -33,6 +33,7 @@ function HomePage() {
   const [showDialog, setShowDialog] = useState(false);
   const [mode, setMode] = useState('select');
   const [selectedPoint, setSelectedPoint] = useState(null);
+  const [selectedPointPosition, setSelectedPointPosition] = useState(null);
   const chartRefs = useRef([]);
 
   const { getRootProps, getInputProps } = useDropzone({
@@ -64,8 +65,6 @@ function HomePage() {
     );
   };
 
-  const pairs = generatePairs(selectedFields);
-
   const exportChartImage = (index) => {
     const chartInstance = chartRefs.current[index];
     if (chartInstance && chartInstance.canvas) {
@@ -93,8 +92,10 @@ function HomePage() {
     }
   };
 
+  const pairs = generatePairs(selectedFields);
+
   return (
-    <div className="flex flex-col items-center justify-between min-h-screen text-center bg-gray-100">
+    <div className="flex flex-col items-center justify-between min-h-screen text-center bg-gray-100 relative">
       <header className="w-full py-8 border-b bg-white border-gray-300 shadow">
         <h1 className="text-4xl font-bold">PlotIt! 📊</h1>
       </header>
@@ -146,9 +147,15 @@ function HomePage() {
                 onClick: (event, elements, chart) => {
                   if (elements.length > 0) {
                     const datasetIndex = elements[0].datasetIndex;
-                    const index = elements[0].index;
-                    const pointData = chartData.datasets[datasetIndex].data[index];
+                    const pointIndex = elements[0].index;
+                    const pointData = chartData.datasets[datasetIndex].data[pointIndex];
                     setSelectedPoint(pointData.full);
+
+                    const canvasRect = chart.canvas.getBoundingClientRect();
+                    const pointElement = chart.getDatasetMeta(datasetIndex).data[pointIndex];
+                    const x = canvasRect.left + pointElement.x;
+                    const y = canvasRect.top + pointElement.y;
+                    setSelectedPointPosition({ x, y });
                   }
                 },
                 plugins: {
@@ -192,11 +199,13 @@ function HomePage() {
               return (
                 <div
                   key={index}
-                  className="bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between"
+                  className="relative bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between"
                 >
-                  <h2 className="text-lg font-medium mb-2">
-                    Graph {index + 1}: {xField} × {yField}
-                  </h2>
+                  <div className="flex justify-between items-center mb-2">
+                    <h2 className="text-lg font-medium">
+                      Graph {index + 1}: {xField} × {yField}
+                    </h2>
+                  </div>
                   <Scatter
                     data={chartData}
                     options={chartOptions}
@@ -204,7 +213,7 @@ function HomePage() {
                   />
                   <button
                     onClick={() => exportChartImage(index)}
-                    className="mt-2 self-end px-2 py-1 text-xs bg-gray-200 text-black rounded hover:bg-gray-400 opacity-80"
+                    className="mt-2 self-end px-2 py-1 text-xs bg-gray-300 text-gray-800 rounded hover:bg-gray-400 opacity-80"
                   >
                     📥 Download as PNG
                   </button>
@@ -255,24 +264,22 @@ function HomePage() {
         </div>
       )}
 
-      {selectedPoint && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-md p-6 text-left">
-            <h2 className="text-xl font-semibold mb-4">Point Details</h2>
-            <div className="space-y-1 max-h-96 overflow-y-auto">
-              {Object.entries(selectedPoint).map(([key, val]) => (
-                <p key={key}><strong>{key}:</strong> {val}</p>
-              ))}
-            </div>
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setSelectedPoint(null)}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Close
-              </button>
-            </div>
+      {selectedPoint && selectedPointPosition && (
+        <div
+          className="absolute z-50 bg-white text-left border border-gray-300 shadow-lg rounded-md p-3 max-h-40 overflow-y-auto text-sm"
+          style={{ top: selectedPointPosition.y - 60, left: selectedPointPosition.x + 10 }}
+        >
+          <div className="flex justify-end mb-1">
+            <button
+              onClick={() => setSelectedPoint(null)}
+              className="text-xs text-blue-500 hover:underline"
+            >
+              Close
+            </button>
           </div>
+          {Object.entries(selectedPoint).map(([key, val]) => (
+            <p key={key}><strong>{key}:</strong> {val}</p>
+          ))}
         </div>
       )}
     </div>
