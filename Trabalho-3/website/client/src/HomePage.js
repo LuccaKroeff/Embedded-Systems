@@ -8,9 +8,13 @@ import {
   PointElement,
   Tooltip,
   Legend,
+  Title,
+  Filler,
+  CategoryScale,
 } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
 
-ChartJS.register(LinearScale, PointElement, Tooltip, Legend);
+ChartJS.register(LinearScale, PointElement, Tooltip, Legend, Title, Filler, CategoryScale, zoomPlugin);
 
 function generatePairs(fields) {
   const pairs = [];
@@ -62,45 +66,42 @@ function HomePage() {
 
   const pairs = generatePairs(selectedFields);
 
-const exportChartImage = (index) => {
-  const chartInstance = chartRefs.current[index];
-  if (chartInstance && chartInstance.canvas) {
-    const originalCanvas = chartInstance.canvas;
-    const width = originalCanvas.width;
-    const height = originalCanvas.height;
+  const exportChartImage = (index) => {
+    const chartInstance = chartRefs.current[index];
+    if (chartInstance && chartInstance.canvas) {
+      const originalCanvas = chartInstance.canvas;
+      const width = originalCanvas.width;
+      const height = originalCanvas.height;
 
-    const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = width;
-    exportCanvas.height = height;
-    const ctx = exportCanvas.getContext("2d");
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = width;
+      exportCanvas.height = height;
+      const ctx = exportCanvas.getContext("2d");
 
-    // Fundo branco
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
 
-    // Copia o conteúdo original
-    ctx.drawImage(originalCanvas, 0, 0);
+      ctx.drawImage(originalCanvas, 0, 0);
 
-    // Exporta como PNG
-    const url = exportCanvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.download = `chart-${index + 1}.png`;
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-};
+      const url = exportCanvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `chart-${index + 1}.png`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-between min-h-screen text-center bg-gray-100">
       <header className="w-full py-8 border-b bg-white border-gray-300 shadow">
-        <h1 className="text-4xl font-bold">Plot It! 📊</h1>
+        <h1 className="text-4xl font-bold">PlotIt! 📊</h1>
       </header>
 
       {mode === 'select' && (
         <main className="flex flex-col items-center justify-center flex-grow">
-          <p className="mb-4 text-2xl">Place your CSV and we will <strong>Plot It!</strong></p>
+          <p className="mb-4 text-2xl">Place your CSV and we will <strong>PlotIt!</strong></p>
           <div
             {...getRootProps()}
             className="p-4 border border-dashed border-gray-400 rounded-md cursor-pointer hover:bg-gray-200 bg-white"
@@ -159,7 +160,22 @@ const exportChartImage = (index) => {
                         return `${xField}: ${point.x}, ${yField}: ${point.y}`;
                       }
                     }
-                  }
+                  },
+                  zoom: {
+                    pan: {
+                      enabled: true,
+                      mode: 'xy',
+                    },
+                    zoom: {
+                      wheel: {
+                        enabled: true,
+                      },
+                      pinch: {
+                        enabled: true,
+                      },
+                      mode: 'xy',
+                    },
+                  },
                 },
                 scales: {
                   x: {
