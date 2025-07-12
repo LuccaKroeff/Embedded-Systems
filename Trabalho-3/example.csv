@@ -1,0 +1,11 @@
+database,time_ms,energy_joules,queries,type_of_query,rows,edp
+DuckDB,120,0.5,100,select,100000,60
+SQLite,150,0.7,100,select,100000,105
+DuckDB,220,0.8,500,insert,200000,176
+SQLite,270,1.1,500,insert,200000,297
+DuckDB,180,0.6,300,update,150000,108
+SQLite,210,0.9,300,update,150000,189
+DuckDB,160,0.55,200,delete,120000,88
+SQLite,190,0.75,200,delete,120000,142.5
+DuckDB,130,0.45,150,select,100000,58.5
+SQLite,160,0.65,150,select,100000,104
