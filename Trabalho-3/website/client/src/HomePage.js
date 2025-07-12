@@ -13,23 +13,23 @@ function HomePage() {
   });
 
   return (
-    <div className="flex flex-col items-center justify-between min-h-screen px-4 py-8 text-center bg-gray-50">
-      <header className="w-full py-4 border-b border-gray-300">
-        <h1 className="text-3xl font-bold">PlotIt</h1>
+    <div className="flex flex-col items-center justify-between min-h-screen text-center bg-gray-100">
+      <header className="w-full py-8 border-b bg-white border-gray-300">
+        <h1 className="text-4xl font-bold">PlotIt! 📊</h1>
       </header>
 
       <main className="flex flex-col items-center justify-center flex-grow">
-        <p className="mb-4 text-lg">Place your CSV and we will PlotIt!</p>
+        <p className="mb-4 text-2xl">Place your CSV and we will <strong>PlotIt!</strong></p>
         <div
           {...getRootProps()}
           className="p-4 border border-dashed border-gray-400 rounded-md cursor-pointer hover:bg-gray-100"
         >
           <input {...getInputProps()} />
-          <p>Choose your csv file</p>
+          <p>📁 Choose your csv file</p>
         </div>
       </main>
 
-      <footer className="w-full py-4 border-t border-gray-300"></footer>
+      <footer className="w-full py-8 border-t bg-white border-gray-300"></footer>
     </div>
   );
 }
