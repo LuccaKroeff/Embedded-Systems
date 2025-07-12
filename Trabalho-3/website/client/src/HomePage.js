@@ -34,6 +34,7 @@ function HomePage() {
   const [mode, setMode] = useState('select');
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [selectedPointPosition, setSelectedPointPosition] = useState(null);
+  const [fullscreenIndex, setFullscreenIndex] = useState(null);
   const chartRefs = useRef([]);
 
   const { getRootProps, getInputProps } = useDropzone({
@@ -201,6 +202,12 @@ function HomePage() {
                   key={index}
                   className="relative bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between"
                 >
+                  <button
+                    onClick={() => setFullscreenIndex(index)}
+                    className="text-sm text-black hover:underline absolute top-2 right-2 z-10"
+                  >
+                    🔍 Zoom-in
+                  </button>
                   <div className="flex justify-between items-center mb-2">
                     <h2 className="text-lg font-medium">
                       Graph {index + 1}: {xField} × {yField}
@@ -260,6 +267,59 @@ function HomePage() {
                 Confirm
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {fullscreenIndex !== null && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="relative bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-5xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">
+                Graph {fullscreenIndex + 1}: {pairs[fullscreenIndex][0]} × {pairs[fullscreenIndex][1]}
+              </h2>
+              <button
+                onClick={() => setFullscreenIndex(null)}
+                className="text-gray-600 hover:text-black text-lg"
+              >
+                ✖️
+              </button>
+            </div>
+            <Scatter
+              data={{
+                datasets: [
+                  {
+                    label: `${pairs[fullscreenIndex][0]} × ${pairs[fullscreenIndex][1]}`,
+                    data: dataRows.map(row => {
+                      const x = parseFloat(row[pairs[fullscreenIndex][0]]);
+                      const y = parseFloat(row[pairs[fullscreenIndex][1]]);
+                      return (!isNaN(x) && !isNaN(y)) ? { x, y } : null;
+                    }).filter(Boolean),
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: { position: 'top' },
+                  zoom: {
+                    pan: { enabled: true, mode: 'xy' },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+                  },
+                },
+                scales: {
+                  x: {
+                    title: { display: true, text: pairs[fullscreenIndex][0] },
+                    beginAtZero: false
+                  },
+                  y: {
+                    title: { display: true, text: pairs[fullscreenIndex][1] },
+                    beginAtZero: false
+                  }
+                }
+              }}
+            />
           </div>
         </div>
       )}
