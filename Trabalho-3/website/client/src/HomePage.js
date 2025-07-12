@@ -114,7 +114,10 @@ function HomePage() {
   return (
     <div className="flex flex-col items-center justify-between min-h-screen text-center bg-gray-100 relative">
       <header className="w-full py-8 border-b bg-white border-gray-300 shadow">
-        <h1 className="text-4xl font-bold">PlotIt! 📊</h1>
+        <div className="flex items-center justify-center gap-3">
+          <img src="/logo192.png" alt="logo" className="w-10 h-10" />
+          <h1 className="text-4xl font-bold">PlotIt!</h1>
+        </div>
       </header>
 
       {mode === 'select' && (
