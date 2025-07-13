@@ -1,28 +1,34 @@
 [
     {
       "name": "SETUP: Create Table",
-      "query": "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT);"
+      "query": "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT);"
     },
     {
       "name": "SETUP: Create Index on Email",
       "query": "CREATE INDEX idx_email ON users (email);"
     },
     {
-      "name": "LOAD: Insert 200k Users",
+      "name": "LOAD: Insert 10k Users",
       "query": "INSERT INTO users (id, name, email) VALUES (?, ?, ?);",
-      "iterations": 200000
+      "slots": 3,
+      "templates": [
+        {"type": "int", "template": "%d"}, 
+        {"type": "str", "template": "user%d"},
+        {"type": "str", "template": "user%d@example.com"}
+      ],
+      "iterations": 10000
     },
     {
       "name": "OLTP: Point-Select on Primary Key",
-      "query": "SELECT name, email FROM users WHERE id = 150000;"
+      "query": "SELECT name, email FROM users WHERE id = 1500;"
     },
     {
       "name": "OLTP: Point-Select on Indexed Column",
-      "query": "SELECT name, email FROM users WHERE email = 'user123456@example.com';"
+      "query": "SELECT name, email FROM users WHERE email = 'user1234@example.com';"
     },
     {
       "name": "OLTP: Simple Update",
-      "query": "UPDATE users SET name = 'Updated Name' WHERE id = 150001;"
+      "query": "UPDATE users SET name = 'Updated Name' WHERE id = 1500;"
     },
     {
       "name": "OLAP: Aggregate with Group By",
