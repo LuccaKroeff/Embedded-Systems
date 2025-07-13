@@ -154,7 +154,7 @@ function HomePage() {
                   setMode('plot');
                 }}
                 disabled={selectedFields.length < 2}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-300 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 Plot ⮕
               </button>
@@ -249,11 +249,11 @@ function HomePage() {
                     onClick={() => setFullscreenIndex(index)}
                     className="text-sm text-black hover:underline absolute top-2 right-2 z-10"
                   >
-                    🔍 Zoom-in
+                    🔍 Fullscreen
                   </button>
                   <div className="flex justify-between items-center mb-2">
                     <h2 className="text-lg font-medium">
-                      Graph {index + 1}: {xField} × {yField}
+                      {xField} × {yField}
                     </h2>
                   </div>
                   <Scatter
@@ -301,7 +301,7 @@ function HomePage() {
                   setShowDialog(true);
                 }}
                 disabled={!colorField}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-300 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 Next ⮕
               </button>
@@ -315,56 +315,73 @@ function HomePage() {
           <div className="relative bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-5xl">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">
-                Graph {fullscreenIndex + 1}: {pairs[fullscreenIndex][0]} × {pairs[fullscreenIndex][1]}
+                {pairs[fullscreenIndex][0]} × {pairs[fullscreenIndex][1]}
               </h2>
               <button
                 onClick={() => setFullscreenIndex(null)}
                 className="text-gray-600 hover:text-black text-lg"
               >
-                ✖️
+                🅧
               </button>
             </div>
-            <Scatter
-              data={{
-                datasets: [
-                  {
-                    label: `${pairs[fullscreenIndex][0]} × ${pairs[fullscreenIndex][1]}`,
-                    data: dataRows.map(row => {
-                      const x = parseFloat(row[pairs[fullscreenIndex][0]]);
-                      const y = parseFloat(row[pairs[fullscreenIndex][1]]);
-                      return (!isNaN(x) && !isNaN(y)) ? { x, y } : null;
-                    }).filter(Boolean),
-                    backgroundColor: context => {
-                      const row = dataRows[context.dataIndex];
-                      return colorMap[row[colorField]] || 'rgba(0,0,0,0.6)';
+
+            {(() => {
+              const xField = pairs[fullscreenIndex][0];
+              const yField = pairs[fullscreenIndex][1];
+              const categories = [...new Set(dataRows.map(row => row[colorField]))];
+
+              const datasets = categories.map(category => ({
+                label: category,
+                data: dataRows
+                  .filter(row => row[colorField] === category)
+                  .map(row => {
+                    const x = parseFloat(row[xField]);
+                    const y = parseFloat(row[yField]);
+                    return (!isNaN(x) && !isNaN(y)) ? { x, y, full: row } : null;
+                  })
+                  .filter(Boolean),
+                backgroundColor: colorMap[category]
+              }));
+
+              return (
+                <Scatter
+                  data={{ datasets }}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { position: 'top' },
+                      tooltip: {
+                        callbacks: {
+                          label: context => {
+                            const point = context.raw;
+                            const colorValue = point.full?.[colorField];
+                            return `${xField}: ${point.x} ${yField}: ${point.y}` + (colorField ? `, ${colorField}: ${colorValue}` : '');
+                          }
+                        }
+                      },
+                      zoom: {
+                        pan: { enabled: true, mode: 'xy' },
+                        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+                      },
+                    },
+                    scales: {
+                      x: {
+                        title: { display: true, text: xField },
+                        beginAtZero: false
+                      },
+                      y: {
+                        title: { display: true, text: yField },
+                        beginAtZero: false
+                      }
                     }
-                  }
-                ]
-              }}
-              options={{
-                responsive: true,
-                plugins: {
-                  legend: { position: 'top' },
-                  zoom: {
-                    pan: { enabled: true, mode: 'xy' },
-                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
-                  },
-                },
-                scales: {
-                  x: {
-                    title: { display: true, text: pairs[fullscreenIndex][0] },
-                    beginAtZero: false
-                  },
-                  y: {
-                    title: { display: true, text: pairs[fullscreenIndex][1] },
-                    beginAtZero: false
-                  }
-                }
-              }}
-            />
+                  }}
+                />
+              );
+            })()}
           </div>
         </div>
       )}
+
 
       {selectedPoint && selectedPointPosition && (
         <div
