@@ -31,7 +31,7 @@ function getColorMap(values) {
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
     '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
   ];
-  const uniqueValues = [...new Set(values)];
+  const uniqueValues = [...new Set(values)].filter(v => v !== undefined && v !== '');
   const map = {};
   uniqueValues.forEach((v, i) => {
     map[v] = colors[i % colors.length];
@@ -48,9 +48,12 @@ function HomePage() {
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [selectedPointPosition, setSelectedPointPosition] = useState(null);
   const [fullscreenIndex, setFullscreenIndex] = useState(null);
+  const [fullscreenPoint, setFullscreenPoint] = useState(null);
+  const [fullscreenPointPos, setFullscreenPointPos] = useState(null);
   const [colorField, setColorField] = useState(null);
   const [showColorDialog, setShowColorDialog] = useState(false);
   const chartRefs = useRef([]);
+  const fullscreenChartContainerRef = useRef(null);
 
   const { getRootProps, getInputProps } = useDropzone({
     accept: { 'text/csv': ['.csv'] },
@@ -206,8 +209,8 @@ function HomePage() {
 
                     const canvasRect = chart.canvas.getBoundingClientRect();
                     const pointElement = chart.getDatasetMeta(datasetIndex).data[pointIndex];
-                    const x = canvasRect.left + pointElement.x;
-                    const y = canvasRect.top + pointElement.y;
+                    const x = canvasRect.left + pointElement.x + window.scrollX;
+                    const y = canvasRect.top + pointElement.y + window.scrollY;
                     setSelectedPointPosition({ x, y });
                   }
                 },
@@ -300,13 +303,15 @@ function HomePage() {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => {
-                  setShowColorDialog(false);
-                  setShowDialog(true);
+                  if (colorField) {
+                    setShowColorDialog(false);
+                    setShowDialog(true);
+                  }
                 }}
                 disabled={!colorField}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                Next ⮕
+                Next
               </button>
             </div>
           </div>
@@ -315,13 +320,19 @@ function HomePage() {
 
       {fullscreenIndex !== null && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="relative bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-5xl">
+          <div
+            ref={fullscreenChartContainerRef}
+            className="relative bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-5xl"
+          >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">
                 {pairs[fullscreenIndex][0]} × {pairs[fullscreenIndex][1]}
               </h2>
               <button
-                onClick={() => setFullscreenIndex(null)}
+                onClick={() => {
+                  setFullscreenIndex(null);
+                  setFullscreenPoint(null);
+                }}
                 className="text-gray-600 hover:text-black text-lg"
               >
                 🅧
@@ -351,6 +362,21 @@ function HomePage() {
                   data={{ datasets }}
                   options={{
                     responsive: true,
+                    onClick: (event, elements, chart) => {
+                      if (elements.length > 0) {
+                        const datasetIndex = elements[0].datasetIndex;
+                        const pointIndex = elements[0].index;
+                        const pointData = datasets[datasetIndex].data[pointIndex];
+                        setFullscreenPoint(pointData.full);
+                    
+                        const pointElement = chart.getDatasetMeta(datasetIndex).data[pointIndex];
+                        const containerRect = fullscreenChartContainerRef.current.getBoundingClientRect();
+                        const canvasRect = chart.canvas.getBoundingClientRect();
+                        const x = pointElement.x + (canvasRect.left - containerRect.left);
+                        const y = pointElement.y + (canvasRect.top - containerRect.top);
+                        setFullscreenPointPos({ x, y });
+                      }
+                    },                    
                     plugins: {
                       legend: { position: 'top' },
                       tooltip: {
@@ -368,23 +394,35 @@ function HomePage() {
                       },
                     },
                     scales: {
-                      x: {
-                        title: { display: true, text: xField },
-                        beginAtZero: false
-                      },
-                      y: {
-                        title: { display: true, text: yField },
-                        beginAtZero: false
-                      }
+                      x: { title: { display: true, text: xField }, beginAtZero: false },
+                      y: { title: { display: true, text: yField }, beginAtZero: false }
                     }
                   }}
                 />
               );
             })()}
+
+            {fullscreenPoint && fullscreenPointPos && (
+              <div
+                className="absolute z-50 bg-white text-left border border-gray-300 shadow-lg rounded-md p-3 max-h-40 overflow-y-auto text-sm"
+                style={{ top: fullscreenPointPos.y - 60, left: fullscreenPointPos.x + 10 }}
+              >
+                <div className="flex justify-end mb-1">
+                  <button
+                    onClick={() => setFullscreenPoint(null)}
+                    className="text-xs text-blue-500 hover:underline"
+                  >
+                    Close
+                  </button>
+                </div>
+                {Object.entries(fullscreenPoint).map(([key, val]) => (
+                  <p key={key}><strong>{key}:</strong> {val}</p>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
-
 
       {selectedPoint && selectedPointPosition && (
         <div
