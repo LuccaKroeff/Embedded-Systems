@@ -31,7 +31,7 @@ def main(platform, output_file):
         platform.remove_core()
 
     writer = csv.writer(output_file)
-    writer.writerow(["test", "database", "time", "energy", "edp"])
+    writer.writerow(["database", "test", "time", "energy", "edp"])
     for result in results:
         writer.writerow(result.to_list())
 

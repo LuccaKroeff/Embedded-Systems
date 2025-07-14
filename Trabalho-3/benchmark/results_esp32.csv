@@ -1,4 +1,4 @@
-test,database,time,energy,edp
+database,test,time,energy,edp
 sqlite,SETUP: Create Table,0.0162,0.0081,0.00013121999999999998
 sqlite,SETUP: Create Index on Email,0.0068,0.0034,2.312e-05
 sqlite,LOAD: Insert 10k Users,25.6555,12.82775,329.102340125
