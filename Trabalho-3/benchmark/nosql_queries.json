@@ -1,0 +1,28 @@
+[
+    {
+      "name": "LOAD: Insert 100k Keys",
+      "command": "PUT user%d user%d@example.com",
+      "iterations": 100000,
+      "slots": 2
+    },
+    {
+      "name": "OLTP: Point-Select on Existing Key",
+      "command": "GET user1500",
+      "iterations": 10000
+    },
+    {
+      "name": "OLTP: Point-Select on Missing Key",
+      "command": "GET user999999",
+      "iterations": 10000
+    },
+    {
+      "name": "OLTP: Simple Update",
+      "command": "PUT user1500 updated_user1500@example.com",
+      "iterations": 10000
+    },
+    {
+      "name": "OLTP: Delete Key",
+      "command": "DEL user1500",
+      "iterations": 1
+    }
+  ]

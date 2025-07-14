@@ -8,35 +8,40 @@
       "command": "CREATE INDEX idx_email ON users (email);"
     },
     {
-      "name": "LOAD: Insert 10k Users",
-      "command": "INSERT INTO users (id, name, email) VALUES (?, ?, ?);",
+      "name": "LOAD: Insert 100k Users",
+      "command": "INSERT INTO users (id, name, email) VALUES (%d, 'user%d', 'user%d@example.com');",
       "slots": 3,
-      "templates": [
-        {"type": "int", "template": "%d"}, 
-        {"type": "str", "template": "user%d"},
-        {"type": "str", "template": "user%d@example.com"}
-      ],
-      "iterations": 10000
+      "iterations": 100000
     },
     {
       "name": "OLTP: Point-Select on Primary Key",
-      "command": "SELECT name, email FROM users WHERE id = 1500;"
+      "command": "SELECT name, email FROM users WHERE id = 1500;",
+      "iterations": 10000
+    },
+    {
+      "name": "OLTP: Point-Select on Missing Key",
+      "command": "SELECT name, email FROM users WHERE id = 1000000;",
+      "iterations": 10000
     },
     {
       "name": "OLTP: Point-Select on Indexed Column",
-      "command": "SELECT name, email FROM users WHERE email = 'user1234@example.com';"
+      "command": "SELECT name, email FROM users WHERE email = 'user1234@example.com';",
+      "iterations": 10000
     },
     {
       "name": "OLTP: Simple Update",
-      "command": "UPDATE users SET name = 'Updated Name' WHERE id = 1500;"
+      "command": "UPDATE users SET name = 'Updated Name' WHERE id = 1500;",
+      "iterations": 10000
     },
     {
       "name": "OLAP: Aggregate with Group By",
-      "command": "SELECT SUBSTR(email, INSTR(email, '@') + 1) as domain, COUNT(*) FROM users GROUP BY domain ORDER BY COUNT(*) DESC LIMIT 5;"
+      "command": "SELECT SUBSTR(email, INSTR(email, '@') + 1) as domain, COUNT(*) FROM users GROUP BY domain ORDER BY COUNT(*) DESC LIMIT 5;",
+      "iterations": 100
     },
     {
       "name": "OLAP: Aggregate with Filter",
-      "command": "SELECT COUNT(*) FROM users WHERE name LIKE 'user1%';"
+      "command": "SELECT COUNT(*) FROM users WHERE name LIKE 'user1%';",
+      "iterations": 100
     },
     {
       "name": "CLEANUP: Drop Table",

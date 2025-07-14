@@ -15,6 +15,7 @@ class BasePlatform(ABC):
     def run_queries(self, queries) -> list[Result]:
         results = []
         for query in queries:
+            print(f"Query: {query.name}")
             result = self.run_query(query)
             results.append(result)
         return results

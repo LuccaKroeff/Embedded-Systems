@@ -7,7 +7,7 @@ from data import Result
 from .base import BasePlatform
 
 class ESP32(BasePlatform):
-    name = ["esp32"]
+    name = "esp32"
     supported_cores = [SQLiteCore]
     board_id = "esp32:esp32:esp32-poe-iso"
     tdp = 0.5
@@ -33,13 +33,13 @@ class ESP32(BasePlatform):
 
     def compile(self, sketch):
         subprocess.run(
-            ["arduino-cli", "compile", "--fqbn", self.board_id, f"./sketches/{sketch}"],
+            ["arduino-cli", "compile", "--fqbn", self.board_id, f"./code/sketches/{sketch}"],
             encoding="utf8",
         )
     
     def upload(self, sketch):    
         subprocess.run(
-            ['arduino-cli', 'upload', '-p', self.port, '--fqbn', self.board_id, f"./sketches/{sketch}"],
+            ['arduino-cli', 'upload', '-p', self.port, '--fqbn', self.board_id, f"./code/sketches/{sketch}"],
             encoding="utf8",
         )
     

@@ -7,7 +7,6 @@ class Query:
     command: str
     iterations: int = 1
     slots: int = 0
-    templates: dict = field(default_factory=dict)
 
 
 @dataclass
