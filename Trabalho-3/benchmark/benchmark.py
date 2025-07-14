@@ -21,6 +21,8 @@ def main(platform, output_file):
     print(f"Running benchmarks on platform '{platform.name}'")
     for core in platform.supported_cores:
         print(f"Running core {core.name}")
+        if platform.name == 'esp32':
+            core.queries_file = 'sql_queries_reduced.json'
         platform.deploy_core(core)
         queries = json.loads(pathlib.Path(core.queries_file).read_text())
         queries = [Query(**document) for document in queries]

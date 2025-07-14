@@ -46,11 +46,13 @@ class ESP32(BasePlatform):
     def run_query(self, query):
         cmd = query.command
         iterations = str(query.iterations)
-
+        slots = str(query.slots)
         self.monitor.expect("Q:")
         self.monitor.send(cmd + "\n")
         self.monitor.expect("I:")
         self.monitor.send(iterations + "\n")
+        self.monitor.expect("S:")
+        self.monitor.send(slots + "\n")
         self.monitor.expect("T: ")
         time = float(self.monitor.readline().decode().strip())
 
