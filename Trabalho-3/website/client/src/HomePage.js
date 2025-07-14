@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Scatter } from 'react-chartjs-2';
 import Papa from 'papaparse';
@@ -37,6 +37,144 @@ function getColorMap(values) {
     map[v] = colors[i % colors.length];
   });
   return map;
+}
+
+function ChartWrapper({
+  dataRows,
+  xField,
+  yField,
+  colorField,
+  allHeaders,
+  colorMap,
+  onPointClick,
+  onFullscreen,
+  onExport,
+  chartRef
+}) {
+  const [filterField, setFilterField] = useState('');
+  const [filterValue, setFilterValue] = useState('');
+  const [uniqueFilterValues, setUniqueFilterValues] = useState([]);
+
+  // Determine which fields are available for filtering (not x, y, or color)
+  const availableFilterFields = allHeaders.filter(
+    h => h !== xField && h !== yField && h !== colorField
+  );
+
+  // Effect to update the unique values dropdown when the filter field changes
+  useEffect(() => {
+    if (filterField) {
+      const values = [...new Set(dataRows.map(row => row[filterField]))].sort();
+      setUniqueFilterValues(values);
+      setFilterValue(''); // Reset value when field changes
+    } else {
+      setUniqueFilterValues([]);
+      setFilterValue('');
+    }
+  }, [filterField, dataRows]);
+
+  // Filter data based on the current selections
+  const filteredData = (filterField && filterValue)
+    ? dataRows.filter(row => String(row[filterField]) === String(filterValue))
+    : dataRows;
+
+  // Prepare chart datasets from the (potentially filtered) data
+  const categories = [...new Set(filteredData.map(row => row[colorField]))];
+  const datasets = categories.map((category) => ({
+    label: category || 'N/A',
+    data: filteredData
+      .filter(row => row[colorField] === category)
+      .map(row => {
+        const x = parseFloat(row[xField]);
+        const y = parseFloat(row[yField]);
+        return (!isNaN(x) && !isNaN(y)) ? { x, y, full: row } : null;
+      })
+      .filter(p => p !== null),
+    backgroundColor: colorMap[category]
+  }));
+
+  const chartData = { datasets };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    onClick: (event, elements, chart) => {
+      if (elements.length > 0) {
+        const datasetIndex = elements[0].datasetIndex;
+        const pointIndex = elements[0].index;
+        const pointData = chart.data.datasets[datasetIndex].data[pointIndex];
+        onPointClick(pointData.full, chart, elements[0]);
+      }
+    },
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: {
+        callbacks: {
+          label: context => {
+            const point = context.raw;
+            const colorValue = point.full?.[colorField];
+            return `${xField}: ${point.x}, ${yField}: ${point.y}` + (colorField ? `, ${colorField}: ${colorValue}` : '');
+          }
+        }
+      },
+      zoom: {
+        pan: { enabled: true, mode: 'xy' },
+        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+      },
+    },
+    scales: {
+      x: { title: { display: true, text: xField }, beginAtZero: false },
+      y: { title: { display: true, text: yField }, beginAtZero: false }
+    }
+  };
+
+  return (
+    <div className="relative bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between h-96">
+      <button
+        onClick={onFullscreen}
+        className="text-sm text-black hover:underline absolute top-2 right-2 z-10"
+      >
+        🔍 Fullscreen
+      </button>
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-lg font-medium">{xField} × {yField}</h2>
+      </div>
+
+      {/* --- Filter Dropdowns --- */}
+      <div className="flex gap-2 mb-2">
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value)}
+          className="p-1 border rounded text-sm w-1/2"
+        >
+          <option value="">Filter by Field...</option>
+          {availableFilterFields.map(field => (
+            <option key={field} value={field}>{field}</option>
+          ))}
+        </select>
+        <select
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          disabled={!filterField}
+          className="p-1 border rounded text-sm w-1/2 disabled:bg-gray-200"
+        >
+          <option value="">Select Value...</option>
+          {uniqueFilterValues.map(value => (
+            <option key={value} value={value}>{value}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex-grow relative">
+        <Scatter data={chartData} options={chartOptions} ref={chartRef} />
+      </div>
+      <button
+        onClick={onExport}
+        className="mt-2 self-end px-2 py-1 text-xs bg-gray-300 text-black rounded hover:bg-gray-400 opacity-80"
+      >
+        📥 Download as PNG
+      </button>
+    </div>
+  );
 }
 
 function HomePage() {
@@ -111,6 +249,14 @@ function HomePage() {
     }
   };
 
+  const handlePointClick = (pointData, chart, element) => {
+    setSelectedPoint(pointData);
+    const canvasRect = chart.canvas.getBoundingClientRect();
+    const x = canvasRect.left + element.x + window.scrollX;
+    const y = canvasRect.top + element.y + window.scrollY;
+    setSelectedPointPosition({ x, y });
+  };
+
   const pairs = generatePairs(selectedFields);
   const colorMap = getColorMap(dataRows.map(row => row[colorField]));
 
@@ -136,156 +282,11 @@ function HomePage() {
         </main>
       )}
 
-      {showDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-md p-6 text-left">
-            <h2 className="text-xl font-semibold mb-4">What information do you want to plot?</h2>
-            <div className="max-h-60 overflow-y-auto space-y-2">
-              {headers.map((field) => (
-                <label key={field} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedFields.includes(field)}
-                    onChange={() => toggleField(field)}
-                    className="accent-blue-600"
-                  />
-                  <span>{field}</span>
-                </label>
-              ))}
-            </div>
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => {
-                  setShowDialog(false);
-                  setMode('plot');
-                }}
-                disabled={selectedFields.length < 2}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                Plot ⮕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mode === 'plot' && (
-        <main className="flex-1 w-full p-6">
-          <div className="flex justify-start mb-4">
-            <button
-              onClick={() => setMode('select')}
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-            >
-              🔙 Back to field selection
-            </button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pairs.map(([xField, yField], index) => {
-              const categories = [...new Set(dataRows.map(row => row[colorField]))];
-
-              const datasets = categories.map((category) => ({
-                label: category,
-                data: dataRows
-                  .filter(row => row[colorField] === category)
-                  .map(row => {
-                    const x = parseFloat(row[xField]);
-                    const y = parseFloat(row[yField]);
-                    return (!isNaN(x) && !isNaN(y)) ? { x, y, full: row } : null;
-                  })
-                  .filter(p => p !== null),
-                backgroundColor: colorMap[category]
-              }));
-
-              const chartData = { datasets };
-
-              const chartOptions = {
-                responsive: true,
-                onClick: (event, elements, chart) => {
-                  if (elements.length > 0) {
-                    const datasetIndex = elements[0].datasetIndex;
-                    const pointIndex = elements[0].index;
-                    const pointData = chartData.datasets[datasetIndex].data[pointIndex];
-                    setSelectedPoint(pointData.full);
-
-                    const canvasRect = chart.canvas.getBoundingClientRect();
-                    const pointElement = chart.getDatasetMeta(datasetIndex).data[pointIndex];
-                    const x = canvasRect.left + pointElement.x + window.scrollX;
-                    const y = canvasRect.top + pointElement.y + window.scrollY;
-                    setSelectedPointPosition({ x, y });
-                  }
-                },
-                plugins: {
-                  legend: { position: 'top' },
-                  tooltip: {
-                    callbacks: {
-                      label: context => {
-                        const point = context.raw;
-                        const colorValue = point.full?.[colorField];
-                        return `${xField}: ${point.x} ${yField}: ${point.y}` + (colorField ? `, ${colorField}: ${colorValue}` : '');
-                      }
-                    }
-                  },
-                  zoom: {
-                    pan: { enabled: true, mode: 'xy' },
-                    zoom: {
-                      wheel: { enabled: true },
-                      pinch: { enabled: true },
-                      mode: 'xy',
-                    },
-                  },
-                },
-                scales: {
-                  x: {
-                    title: { display: true, text: xField },
-                    beginAtZero: false
-                  },
-                  y: {
-                    title: { display: true, text: yField },
-                    beginAtZero: false
-                  }
-                }
-              };
-
-              return (
-                <div
-                  key={index}
-                  className="relative bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between"
-                >
-                  <button
-                    onClick={() => setFullscreenIndex(index)}
-                    className="text-sm text-black hover:underline absolute top-2 right-2 z-10"
-                  >
-                    🔍 Fullscreen
-                  </button>
-                  <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-lg font-medium">
-                      {xField} × {yField}
-                    </h2>
-                  </div>
-                  <Scatter
-                    data={chartData}
-                    options={chartOptions}
-                    ref={(el) => chartRefs.current[index] = el?.chartInstance || el?.chart || el}
-                  />
-                  <button
-                    onClick={() => exportChartImage(index)}
-                    className="mt-2 self-end px-2 py-1 text-xs bg-gray-300 text-black rounded hover:bg-gray-400 opacity-80"
-                  >
-                    📥 Download as PNG
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </main>
-      )}
-
-<footer className="w-full py-6 border-t bg-white border-gray-300" />      
       {showColorDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-md p-6 text-left">
             <h2 className="text-xl font-semibold mb-4">Which field should define the point color?</h2>
-            <div className="space-y-2">
+            <div className="max-h-60 overflow-y-auto space-y-2">
               {headers.map((field) => (
                 <label key={field} className="flex items-center space-x-2">
                   <input
@@ -318,13 +319,84 @@ function HomePage() {
         </div>
       )}
 
+      {showDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-md p-6 text-left">
+            <h2 className="text-xl font-semibold mb-4">What information do you want to plot?</h2>
+            <div className="max-h-60 overflow-y-auto space-y-2">
+              {headers.filter(h => h !== colorField).map((field) => (
+                <label key={field} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedFields.includes(field)}
+                    onChange={() => toggleField(field)}
+                    className="accent-blue-600"
+                  />
+                  <span>{field}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowDialog(false);
+                  setMode('plot');
+                }}
+                disabled={selectedFields.length < 2}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                Plot ⮕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mode === 'plot' && (
+        <main className="flex-1 w-full p-6">
+          <div className="flex justify-start mb-4">
+            <button
+              onClick={() => {
+                setMode('select');
+                setSelectedFields([]);
+                setColorField(null);
+                setDataRows([]);
+                setHeaders([]);
+              }}
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              🔙 Start Over
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {pairs.map(([xField, yField], index) => (
+              <ChartWrapper
+                key={`${xField}-${yField}`}
+                dataRows={dataRows}
+                xField={xField}
+                yField={yField}
+                colorField={colorField}
+                allHeaders={headers}
+                colorMap={colorMap}
+                onPointClick={handlePointClick}
+                onFullscreen={() => setFullscreenIndex(index)}
+                onExport={() => exportChartImage(index)}
+                chartRef={(el) => (chartRefs.current[index] = el)}
+              />
+            ))}
+          </div>
+        </main>
+      )}
+
+<footer className="w-full py-6 border-t bg-white border-gray-300" />
+
       {fullscreenIndex !== null && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div
             ref={fullscreenChartContainerRef}
-            className="relative bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-5xl"
+            className="relative bg-white rounded-lg shadow-lg p-6 w-full h-full flex flex-col"
           >
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <h2 className="text-xl font-semibold">
                 {pairs[fullscreenIndex][0]} × {pairs[fullscreenIndex][1]}
               </h2>
@@ -339,6 +411,7 @@ function HomePage() {
               </button>
             </div>
 
+            <div className="flex-grow relative">
             {(() => {
               const xField = pairs[fullscreenIndex][0];
               const yField = pairs[fullscreenIndex][1];
@@ -362,6 +435,7 @@ function HomePage() {
                   data={{ datasets }}
                   options={{
                     responsive: true,
+                    maintainAspectRatio: false,
                     onClick: (event, elements, chart) => {
                       if (elements.length > 0) {
                         const datasetIndex = elements[0].datasetIndex;
@@ -401,6 +475,7 @@ function HomePage() {
                 />
               );
             })()}
+            </div>
 
             {fullscreenPoint && fullscreenPointPos && (
               <div
