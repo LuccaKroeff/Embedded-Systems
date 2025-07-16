@@ -103,12 +103,10 @@ function ScrollableLegend({ datasets, fullscreen }) {
         return null;
     }
 
-    const maxHeight = fullscreen ? 500 : 250;
-
     return (
         <div className="flex-shrink-0 w-48 ml-4 pr-2">
             <h4 className="text-sm font-semibold mb-2 border-b pb-1">Legend</h4>
-            <div className={`max-h-[${maxHeight}px] overflow-y-auto custom-scrollbar`}>
+            <div className={`overflow-y-auto custom-scrollbar ${fullscreen ? 'max-h-[500px]' : 'max-h-[250px]'}`}>
                 {legendItems.map(ds => (
                     <div key={ds.label} className="flex items-center mb-1 text-xs">
                         <span
@@ -324,11 +322,11 @@ function ChartWrapper({
         </div>
       </div>
 
-      <div className="flex-grow flex flex-row">
-        <div className="flex-grow relative">
+      <div className="flex-grow flex flex-row min-h-0">
+        <div className="flex-grow relative min-w-0">
           <Scatter data={chartData} options={chartOptions} ref={chartRef} />
         </div>
-        <ScrollableLegend datasets={allDatasets} />
+        <ScrollableLegend datasets={allDatasets} fullscreen={false} />
       </div>
       <button onClick={onExport} className="mt-2 self-end px-2 py-1 text-xs bg-gray-300 text-black rounded hover:bg-gray-400 opacity-80">
         📥 Download as PNG
@@ -560,7 +558,7 @@ function HomePage() {
               🔙 Start Over
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {pairs.map(([xField, yField], index) => (
               <ChartWrapper
                 key={`${xField}-${yField}`}
@@ -607,7 +605,7 @@ function HomePage() {
               </button>
             </div>
             
-            <div className="flex-grow relative flex flex-row">
+            <div className="flex-grow relative flex flex-row min-h-0">
             {(() => {
               const [xField, yField] = pairs[fullscreenIndex];
               const categories = [...new Set(dataRows.map(row => getCompositeKey(row, colorFields)))];
@@ -633,7 +631,7 @@ function HomePage() {
 
               return (
                 <>
-                  <div className="flex-grow h-full relative">
+                  <div className="flex-grow h-full relative min-w-0">
                     <Scatter
                       data={{ datasets }}
                       options={{
