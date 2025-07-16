@@ -6,6 +6,7 @@ import {
   Chart as ChartJS,
   LinearScale,
   PointElement,
+  LineElement,
   Tooltip,
   Legend,
   Title,
@@ -14,18 +15,12 @@ import {
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 
-ChartJS.register(LinearScale, PointElement, Tooltip, Legend, Title, Filler, CategoryScale, zoomPlugin);
+// Register Chart.js components and plugins
+ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, Title, Filler, CategoryScale, zoomPlugin);
 
-function generatePairs(fields) {
-  const pairs = [];
-  for (let i = 0; i < fields.length; i++) {
-    for (let j = i + 1; j < fields.length; j++) {
-      pairs.push([fields[i], fields[j]]);
-    }
-  }
-  return pairs;
-}
+// --- Helper Functions ---
 
+// Creates a color map for unique values in a field
 function getColorMap(values) {
   const colors = [
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
@@ -39,11 +34,100 @@ function getColorMap(values) {
   return map;
 }
 
+// Generates a composite key from a row based on specified fields
+const getCompositeKey = (row, fields) => fields.map(field => row[field]).join(' - ');
+
+// Generates pairs of fields for plotting
+function generatePairs(fields) {
+  const pairs = [];
+  for (let i = 0; i < fields.length; i++) {
+    for (let j = i + 1; j < fields.length; j++) {
+      pairs.push([fields[i], fields[j]]);
+    }
+  }
+  return pairs;
+}
+
+// Finds the Pareto frontier from a set of points for different optimization goals
+function findParetoFrontier(points, direction = 'top-left') {
+    if (!points || points.length === 0) return [];
+
+    // Sort points based on the chosen direction
+    const sortedPoints = [...points].sort((a, b) => {
+        switch (direction) {
+            case 'top-right': // Maximize X, Maximize Y
+            case 'bottom-right': // Maximize X, Minimize Y
+                if (a.x < b.x) return 1;
+                if (a.x > b.x) return -1;
+                return direction === 'bottom-right' ? (a.y < b.y ? -1 : 1) : (a.y > b.y ? -1 : 1);
+            case 'top-left': // Minimize X, Maximize Y
+            case 'bottom-left': // Minimize X, Minimize Y
+            default:
+                if (a.x < b.x) return -1;
+                if (a.x > b.x) return 1;
+                return direction === 'bottom-left' ? (a.y < b.y ? -1 : 1) : (a.y > b.y ? -1 : 1);
+        }
+    });
+
+    const paretoFrontier = [];
+    if (direction === 'top-left' || direction === 'top-right') {
+        let maxY = -Infinity;
+        for (const point of sortedPoints) {
+            if (point.y > maxY) {
+                paretoFrontier.push(point);
+                maxY = point.y;
+            }
+        }
+    } else { // bottom-left or bottom-right
+        let minY = Infinity;
+        for (const point of sortedPoints) {
+            if (point.y < minY) {
+                paretoFrontier.push(point);
+                minY = point.y;
+            }
+        }
+    }
+    
+    if (direction.includes('right')) {
+        return paretoFrontier.sort((a,b) => a.x - b.x);
+    }
+    
+    return paretoFrontier;
+}
+
+// --- ScrollableLegend Component ---
+function ScrollableLegend({ datasets }) {
+    const legendItems = datasets.filter(ds => ds.type === 'scatter' && ds.label && ds.label !== 'N/A');
+
+    if (legendItems.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="flex-shrink-0 w-48 ml-4 pr-2">
+            <h4 className="text-sm font-semibold mb-2 border-b pb-1">Legend</h4>
+            <div className="max-h-[250px] overflow-y-auto custom-scrollbar">
+                {legendItems.map(ds => (
+                    <div key={ds.label} className="flex items-center mb-1 text-xs">
+                        <span
+                            className="w-3 h-3 inline-block mr-2 rounded-sm"
+                            style={{ backgroundColor: ds.backgroundColor }}
+                        ></span>
+                        <span className="truncate">{ds.label}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+
+// --- ChartWrapper Component ---
 function ChartWrapper({
   dataRows,
   xField,
   yField,
-  colorField,
+  colorFields,
   allHeaders,
   colorMap,
   onPointClick,
@@ -54,65 +138,134 @@ function ChartWrapper({
   const [filterField, setFilterField] = useState('');
   const [filterValue, setFilterValue] = useState('');
   const [uniqueFilterValues, setUniqueFilterValues] = useState([]);
+  const [showPareto, setShowPareto] = useState(false);
+  const [paretoDirection, setParetoDirection] = useState('top-left');
+  const [aggregationMethod, setAggregationMethod] = useState('none'); // 'none', 'average', 'sum'
 
-  // Determine which fields are available for filtering (not x, y, or color)
   const availableFilterFields = allHeaders.filter(
-    h => h !== xField && h !== yField && h !== colorField
+    h => h !== xField && h !== yField
   );
 
-  // Effect to update the unique values dropdown when the filter field changes
   useEffect(() => {
     if (filterField) {
       const values = [...new Set(dataRows.map(row => row[filterField]))].sort();
       setUniqueFilterValues(values);
-      setFilterValue(''); // Reset value when field changes
+      setFilterValue('');
     } else {
       setUniqueFilterValues([]);
       setFilterValue('');
     }
   }, [filterField, dataRows]);
 
-  // Filter data based on the current selections
   const filteredData = (filterField && filterValue)
     ? dataRows.filter(row => String(row[filterField]) === String(filterValue))
     : dataRows;
 
-  // Prepare chart datasets from the (potentially filtered) data
-  const categories = [...new Set(filteredData.map(row => row[colorField]))];
-  const datasets = categories.map((category) => ({
-    label: category || 'N/A',
-    data: filteredData
-      .filter(row => row[colorField] === category)
+  // --- Data Aggregation and Dataset Preparation ---
+  const categories = [...new Set(filteredData.map(row => getCompositeKey(row, colorFields)))];
+  const scatterDatasets = categories.map((category) => {
+    const categoryPointsRaw = filteredData
+      .filter(row => getCompositeKey(row, colorFields) === category)
       .map(row => {
         const x = parseFloat(row[xField]);
         const y = parseFloat(row[yField]);
         return (!isNaN(x) && !isNaN(y)) ? { x, y, full: row } : null;
       })
-      .filter(p => p !== null),
-    backgroundColor: colorMap[category]
-  }));
+      .filter(p => p !== null);
 
-  const chartData = { datasets };
+    let finalPoints = [];
+
+    if (aggregationMethod === 'none' || categoryPointsRaw.length === 0) {
+        finalPoints = categoryPointsRaw;
+    } else {
+        const numPoints = categoryPointsRaw.length;
+        const sumX = categoryPointsRaw.reduce((acc, p) => acc + p.x, 0);
+        const sumY = categoryPointsRaw.reduce((acc, p) => acc + p.y, 0);
+
+        if (aggregationMethod === 'average') {
+            const avgX = sumX / numPoints;
+            const avgY = sumY / numPoints;
+            finalPoints = [{
+                x: avgX,
+                y: avgY,
+                full: { _aggregated: true, _type: 'Average', _count: numPoints, [xField]: avgX, [yField]: avgY }
+            }];
+        } else if (aggregationMethod === 'sum') {
+            finalPoints = [{
+                x: sumX,
+                y: sumY,
+                full: { _aggregated: true, _type: 'Sum', _count: numPoints, [xField]: sumX, [yField]: sumY }
+            }];
+        }
+    }
+
+    return {
+      label: category || 'N/A',
+      data: finalPoints,
+      backgroundColor: colorMap[category],
+      type: 'scatter',
+    };
+  });
+  
+  const allDatasets = [...scatterDatasets];
+
+  if (showPareto) {
+      // The points for the Pareto frontier should be the same as the points being plotted.
+      // This will use either the raw points or the aggregated points based on the current setting.
+      const allPointsForPareto = scatterDatasets.flatMap(dataset => dataset.data);
+
+      const paretoFrontier = findParetoFrontier(allPointsForPareto, paretoDirection);
+      const paretoDataset = {
+          label: `Pareto Frontier`,
+          data: paretoFrontier,
+          borderColor: 'rgba(255, 99, 132, 1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          showLine: true,
+          fill: false,
+          type: 'line',
+      };
+      allDatasets.push(paretoDataset);
+  }
+
+  const chartData = { datasets: allDatasets };
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     onClick: (event, elements, chart) => {
       if (elements.length > 0) {
-        const datasetIndex = elements[0].datasetIndex;
-        const pointIndex = elements[0].index;
-        const pointData = chart.data.datasets[datasetIndex].data[pointIndex];
-        onPointClick(pointData.full, chart, elements[0]);
+        const { datasetIndex, index } = elements[0];
+        const dataset = chart.data.datasets[datasetIndex];
+        if (dataset.type === 'scatter') {
+            const pointData = dataset.data[index];
+            // Only trigger popup for non-aggregated points
+            if (pointData.full && !pointData.full._aggregated) {
+                onPointClick(pointData.full, chart, elements[0]);
+            }
+        }
       }
     },
     plugins: {
-      legend: { position: 'top' },
+      legend: { display: false },
       tooltip: {
         callbacks: {
           label: context => {
+            if (context.dataset.type === 'line') return null;
             const point = context.raw;
-            const colorValue = point.full?.[colorField];
-            return `${xField}: ${point.x}, ${yField}: ${point.y}` + (colorField ? `, ${colorField}: ${colorValue}` : '');
+            const fullData = point.full;
+
+            // Custom tooltip for aggregated points
+            if (fullData && fullData._aggregated) {
+                return [
+                    `${fullData._type} of ${fullData._count} points`,
+                    `${xField}: ${fullData[xField].toFixed(2)}`,
+                    `${yField}: ${fullData[yField].toFixed(2)}`
+                ];
+            }
+            
+            const colorValue = getCompositeKey(fullData, colorFields);
+            return `${xField}: ${point.x}, ${yField}: ${point.y}` + (colorFields.length ? `, ${colorValue}` : '');
           }
         }
       },
@@ -128,55 +281,63 @@ function ChartWrapper({
   };
 
   return (
-    <div className="relative bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between h-96">
-      <button
-        onClick={onFullscreen}
-        className="text-sm text-black hover:underline absolute top-2 right-2 z-10"
-      >
+    <div className="relative bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between h-[500px]">
+      <button onClick={onFullscreen} className="text-sm text-black hover:underline absolute top-2 right-2 z-10">
         🔍 Fullscreen
       </button>
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-medium">{xField} × {yField}</h2>
+      <h2 className="text-lg font-medium text-left mb-2">{xField} vs {yField}</h2>
+
+      {/* Controls Container */}
+      <div className="flex flex-col gap-2 mb-2">
+        <div className="flex gap-2 items-center">
+          <select value={filterField} onChange={(e) => setFilterField(e.target.value)} className="p-1 border rounded text-sm w-1/2">
+            <option value="">Filter by Field...</option>
+            {availableFilterFields.map(field => <option key={field} value={field}>{field}</option>)}
+          </select>
+          <select value={filterValue} onChange={(e) => setFilterValue(e.target.value)} disabled={!filterField} className="p-1 border rounded text-sm w-1/2 disabled:bg-gray-200">
+            <option value="">Select Value...</option>
+            {uniqueFilterValues.map(value => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-2 items-center text-sm">
+          <label htmlFor={`aggregation-${xField}-${yField}`} className="font-medium">Group Points:</label>
+          <select id={`aggregation-${xField}-${yField}`} value={aggregationMethod} onChange={(e) => setAggregationMethod(e.target.value)} className="p-1 border rounded text-sm flex-grow">
+            <option value="none">No Grouping</option>
+            <option value="average">By Average</option>
+            <option value="sum">By Sum</option>
+          </select>
+        </div>
+        <div className="flex items-center justify-center my-1 gap-4">
+          <label className="flex items-center space-x-2 text-sm">
+            <input type="checkbox" checked={showPareto} onChange={() => setShowPareto(prev => !prev)} className="accent-red-500"/>
+            <span>Show Pareto Frontier</span>
+          </label>
+          {showPareto && (
+            <select value={paretoDirection} onChange={e => setParetoDirection(e.target.value)} className="p-1 border rounded text-sm">
+              <option value="top-left">Top-Left (Min X, Max Y)</option>
+              <option value="top-right">Top-Right (Max X, Max Y)</option>
+              <option value="bottom-left">Bottom-Left (Min X, Min Y)</option>
+              <option value="bottom-right">Bottom-Right (Max X, Min Y)</option>
+            </select>
+          )}
+        </div>
       </div>
 
-      {/* --- Filter Dropdowns --- */}
-      <div className="flex gap-2 mb-2">
-        <select
-          value={filterField}
-          onChange={(e) => setFilterField(e.target.value)}
-          className="p-1 border rounded text-sm w-1/2"
-        >
-          <option value="">Filter by Field...</option>
-          {availableFilterFields.map(field => (
-            <option key={field} value={field}>{field}</option>
-          ))}
-        </select>
-        <select
-          value={filterValue}
-          onChange={(e) => setFilterValue(e.target.value)}
-          disabled={!filterField}
-          className="p-1 border rounded text-sm w-1/2 disabled:bg-gray-200"
-        >
-          <option value="">Select Value...</option>
-          {uniqueFilterValues.map(value => (
-            <option key={value} value={value}>{value}</option>
-          ))}
-        </select>
+      <div className="flex-grow flex flex-row">
+        <div className="flex-grow relative">
+          <Scatter data={chartData} options={chartOptions} ref={chartRef} />
+        </div>
+        <ScrollableLegend datasets={allDatasets} />
       </div>
-
-      <div className="flex-grow relative">
-        <Scatter data={chartData} options={chartOptions} ref={chartRef} />
-      </div>
-      <button
-        onClick={onExport}
-        className="mt-2 self-end px-2 py-1 text-xs bg-gray-300 text-black rounded hover:bg-gray-400 opacity-80"
-      >
+      <button onClick={onExport} className="mt-2 self-end px-2 py-1 text-xs bg-gray-300 text-black rounded hover:bg-gray-400 opacity-80">
         📥 Download as PNG
       </button>
     </div>
   );
 }
 
+
+// --- Main HomePage Component ---
 function HomePage() {
   const [headers, setHeaders] = useState([]);
   const [dataRows, setDataRows] = useState([]);
@@ -188,7 +349,7 @@ function HomePage() {
   const [fullscreenIndex, setFullscreenIndex] = useState(null);
   const [fullscreenPoint, setFullscreenPoint] = useState(null);
   const [fullscreenPointPos, setFullscreenPointPos] = useState(null);
-  const [colorField, setColorField] = useState(null);
+  const [colorFields, setColorFields] = useState([]);
   const [showColorDialog, setShowColorDialog] = useState(false);
   const chartRefs = useRef([]);
   const fullscreenChartContainerRef = useRef(null);
@@ -214,11 +375,16 @@ function HomePage() {
     }
   });
 
+  const toggleColorField = (field) => {
+    setColorFields(prev =>
+        prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]
+    );
+    setSelectedFields(prev => prev.filter(f => f !== field));
+  };
+
   const toggleField = (field) => {
     setSelectedFields(prev =>
-      prev.includes(field)
-        ? prev.filter(f => f !== field)
-        : [...prev, field]
+      prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]
     );
   };
 
@@ -226,19 +392,13 @@ function HomePage() {
     const chartInstance = chartRefs.current[index];
     if (chartInstance && chartInstance.canvas) {
       const originalCanvas = chartInstance.canvas;
-      const width = originalCanvas.width;
-      const height = originalCanvas.height;
-
       const exportCanvas = document.createElement("canvas");
-      exportCanvas.width = width;
-      exportCanvas.height = height;
+      exportCanvas.width = originalCanvas.width;
+      exportCanvas.height = originalCanvas.height;
       const ctx = exportCanvas.getContext("2d");
-
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, width, height);
-
+      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
       ctx.drawImage(originalCanvas, 0, 0);
-
       const url = exportCanvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.download = `chart-${index + 1}.png`;
@@ -257,8 +417,19 @@ function HomePage() {
     setSelectedPointPosition({ x, y });
   };
 
+  const colorMap = colorFields.length > 0 
+    ? getColorMap(dataRows.map(row => getCompositeKey(row, colorFields))) 
+    : {};
+
+  const handleStartOver = () => {
+    setMode('select');
+    setSelectedFields([]);
+    setColorFields([]);
+    setDataRows([]);
+    setHeaders([]);
+  };
+
   const pairs = generatePairs(selectedFields);
-  const colorMap = getColorMap(dataRows.map(row => row[colorField]));
 
   return (
     <div className="flex flex-col items-center justify-between min-h-screen text-center bg-gray-100 relative">
@@ -285,17 +456,15 @@ function HomePage() {
       {showColorDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-md p-6 text-left">
-            <h2 className="text-xl font-semibold mb-4">Which field should define the point color?</h2>
+            <h2 className="text-xl font-semibold mb-4">Which field(s) should define the point color?</h2>
             <div className="max-h-60 overflow-y-auto space-y-2">
               {headers.map((field) => (
-                <label key={field} className="flex items-center space-x-2">
+                <label key={`color-${field}`} className="flex items-center space-x-2">
                   <input
-                    type="radio"
-                    name="colorField"
-                    value={field}
-                    checked={colorField === field}
-                    onChange={() => setColorField(field)}
-                    className="accent-blue-600"
+                    type="checkbox"
+                    checked={colorFields.includes(field)}
+                    onChange={() => toggleColorField(field)}
+                    className="accent-purple-600"
                   />
                   <span>{field}</span>
                 </label>
@@ -304,12 +473,12 @@ function HomePage() {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => {
-                  if (colorField) {
+                  if (colorFields.length > 0) {
                     setShowColorDialog(false);
                     setShowDialog(true);
                   }
                 }}
-                disabled={!colorField}
+                disabled={colorFields.length === 0}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 Next
@@ -324,7 +493,7 @@ function HomePage() {
           <div className="bg-white rounded-lg shadow-lg w-[90%] max-w-md p-6 text-left">
             <h2 className="text-xl font-semibold mb-4">What information do you want to plot?</h2>
             <div className="max-h-60 overflow-y-auto space-y-2">
-              {headers.filter(h => h !== colorField).map((field) => (
+              {headers.filter(h => !colorFields.includes(h)).map((field) => (
                 <label key={field} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -355,27 +524,18 @@ function HomePage() {
       {mode === 'plot' && (
         <main className="flex-1 w-full p-6">
           <div className="flex justify-start mb-4">
-            <button
-              onClick={() => {
-                setMode('select');
-                setSelectedFields([]);
-                setColorField(null);
-                setDataRows([]);
-                setHeaders([]);
-              }}
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-            >
+            <button onClick={handleStartOver} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
               🔙 Start Over
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {pairs.map(([xField, yField], index) => (
               <ChartWrapper
                 key={`${xField}-${yField}`}
                 dataRows={dataRows}
                 xField={xField}
                 yField={yField}
-                colorField={colorField}
+                colorFields={colorFields}
                 allHeaders={headers}
                 colorMap={colorMap}
                 onPointClick={handlePointClick}
@@ -387,8 +547,8 @@ function HomePage() {
           </div>
         </main>
       )}
-
-<footer className="w-full py-6 border-t bg-white border-gray-300" />
+      
+      <footer className="w-full py-6 border-t bg-white border-gray-300" />
 
       {fullscreenIndex !== null && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
@@ -398,81 +558,86 @@ function HomePage() {
           >
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <h2 className="text-xl font-semibold">
-                {pairs[fullscreenIndex][0]} × {pairs[fullscreenIndex][1]}
+                {pairs[fullscreenIndex][0]} vs {pairs[fullscreenIndex][1]}
               </h2>
               <button
-                onClick={() => {
-                  setFullscreenIndex(null);
-                  setFullscreenPoint(null);
-                }}
+                onClick={() => setFullscreenIndex(null)}
                 className="text-gray-600 hover:text-black text-lg"
               >
                 🅧
               </button>
             </div>
-
-            <div className="flex-grow relative">
+            
+            <div className="flex-grow relative flex flex-row">
             {(() => {
-              const xField = pairs[fullscreenIndex][0];
-              const yField = pairs[fullscreenIndex][1];
-              const categories = [...new Set(dataRows.map(row => row[colorField]))];
-
-              const datasets = categories.map(category => ({
-                label: category,
-                data: dataRows
-                  .filter(row => row[colorField] === category)
+              const [xField, yField] = pairs[fullscreenIndex];
+              const categories = [...new Set(dataRows.map(row => getCompositeKey(row, colorFields)))];
+              const datasets = categories.flatMap(category => {
+                const categoryPoints = dataRows
+                  .filter(row => getCompositeKey(row, colorFields) === category)
                   .map(row => {
                     const x = parseFloat(row[xField]);
                     const y = parseFloat(row[yField]);
                     return (!isNaN(x) && !isNaN(y)) ? { x, y, full: row } : null;
                   })
-                  .filter(Boolean),
-                backgroundColor: colorMap[category]
-              }));
+                  .filter(Boolean);
+                  
+                const scatterDataset = {
+                    label: category,
+                    data: categoryPoints,
+                    backgroundColor: colorMap[category],
+                    type: 'scatter'
+                };
+
+                return [scatterDataset];
+              });
 
               return (
-                <Scatter
-                  data={{ datasets }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    onClick: (event, elements, chart) => {
-                      if (elements.length > 0) {
-                        const datasetIndex = elements[0].datasetIndex;
-                        const pointIndex = elements[0].index;
-                        const pointData = datasets[datasetIndex].data[pointIndex];
-                        setFullscreenPoint(pointData.full);
-                    
-                        const pointElement = chart.getDatasetMeta(datasetIndex).data[pointIndex];
-                        const containerRect = fullscreenChartContainerRef.current.getBoundingClientRect();
-                        const canvasRect = chart.canvas.getBoundingClientRect();
-                        const x = pointElement.x + (canvasRect.left - containerRect.left);
-                        const y = pointElement.y + (canvasRect.top - containerRect.top);
-                        setFullscreenPointPos({ x, y });
-                      }
-                    },                    
-                    plugins: {
-                      legend: { position: 'top' },
-                      tooltip: {
-                        callbacks: {
-                          label: context => {
-                            const point = context.raw;
-                            const colorValue = point.full?.[colorField];
-                            return `${xField}: ${point.x} ${yField}: ${point.y}` + (colorField ? `, ${colorField}: ${colorValue}` : '');
+                <>
+                  <div className="flex-grow h-full relative">
+                    <Scatter
+                      data={{ datasets }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        onClick: (event, elements, chart) => {
+                          if (elements.length > 0) {
+                            const { datasetIndex, index } = elements[0];
+                            const pointData = chart.data.datasets[datasetIndex].data[index];
+                            setFullscreenPoint(pointData.full);
+                            const pointElement = elements[0];
+                            const containerRect = fullscreenChartContainerRef.current.getBoundingClientRect();
+                            const canvasRect = chart.canvas.getBoundingClientRect();
+                            const x = pointElement.x + (canvasRect.left - containerRect.left);
+                            const y = pointElement.y + (canvasRect.top - containerRect.top);
+                            setFullscreenPointPos({ x, y });
                           }
+                        },                    
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: {
+                            callbacks: {
+                              label: context => {
+                                const point = context.raw;
+                                const colorValue = getCompositeKey(point.full, colorFields);
+                                return `${xField}: ${point.x}, ${yField}: ${point.y}` + (colorFields.length ? `, ${colorValue}` : '');
+                              }
+                            }
+                          },
+                          zoom: {
+                            pan: { enabled: true, mode: 'xy' },
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+                          },
+                        },
+                        scales: {
+                          x: { title: { display: true, text: xField }, beginAtZero: false },
+                          y: { title: { display: true, text: yField }, beginAtZero: false }
                         }
-                      },
-                      zoom: {
-                        pan: { enabled: true, mode: 'xy' },
-                        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
-                      },
-                    },
-                    scales: {
-                      x: { title: { display: true, text: xField }, beginAtZero: false },
-                      y: { title: { display: true, text: yField }, beginAtZero: false }
-                    }
-                  }}
-                />
+                      }}
+                    />
+                  </div>
+                  <ScrollableLegend datasets={datasets} />
+                </>
               );
             })()}
             </div>
@@ -480,7 +645,7 @@ function HomePage() {
             {fullscreenPoint && fullscreenPointPos && (
               <div
                 className="absolute z-50 bg-white text-left border border-gray-300 shadow-lg rounded-md p-3 max-h-40 overflow-y-auto text-sm"
-                style={{ top: fullscreenPointPos.y - 60, left: fullscreenPointPos.x + 10 }}
+                style={{ top: fullscreenPointPos.y, left: fullscreenPointPos.x + 15 }}
               >
                 <div className="flex justify-end mb-1">
                   <button
@@ -491,7 +656,7 @@ function HomePage() {
                   </button>
                 </div>
                 {Object.entries(fullscreenPoint).map(([key, val]) => (
-                  <p key={key}><strong>{key}:</strong> {val}</p>
+                  <p key={key}><strong>{key}:</strong> {String(val)}</p>
                 ))}
               </div>
             )}
@@ -502,7 +667,7 @@ function HomePage() {
       {selectedPoint && selectedPointPosition && (
         <div
           className="absolute z-50 bg-white text-left border border-gray-300 shadow-lg rounded-md p-3 max-h-40 overflow-y-auto text-sm"
-          style={{ top: selectedPointPosition.y - 60, left: selectedPointPosition.x + 10 }}
+          style={{ top: selectedPointPosition.y, left: selectedPointPosition.x + 15 }}
         >
           <div className="flex justify-end mb-1">
             <button
@@ -513,7 +678,7 @@ function HomePage() {
             </button>
           </div>
           {Object.entries(selectedPoint).map(([key, val]) => (
-            <p key={key}><strong>{key}:</strong> {val}</p>
+            <p key={key}><strong>{key}:</strong> {String(val)}</p>
           ))}
         </div>
       )}
