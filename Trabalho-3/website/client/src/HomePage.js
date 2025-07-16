@@ -96,17 +96,19 @@ function findParetoFrontier(points, direction = 'top-left') {
 }
 
 // --- ScrollableLegend Component ---
-function ScrollableLegend({ datasets }) {
+function ScrollableLegend({ datasets, fullscreen }) {
     const legendItems = datasets.filter(ds => ds.type === 'scatter' && ds.label && ds.label !== 'N/A');
 
     if (legendItems.length === 0) {
         return null;
     }
 
+    const maxHeight = fullscreen ? 500 : 250;
+
     return (
         <div className="flex-shrink-0 w-48 ml-4 pr-2">
             <h4 className="text-sm font-semibold mb-2 border-b pb-1">Legend</h4>
-            <div className="max-h-[250px] overflow-y-auto custom-scrollbar">
+            <div className={`max-h-[${maxHeight}px] overflow-y-auto custom-scrollbar`}>
                 {legendItems.map(ds => (
                     <div key={ds.label} className="flex items-center mb-1 text-xs">
                         <span
@@ -133,7 +135,10 @@ function ChartWrapper({
   onPointClick,
   onFullscreen,
   onExport,
-  chartRef
+  chartRef,
+  selectedPoint,
+  selectedPointPosition,
+  onClosePopup
 }) {
   const [filterField, setFilterField] = useState('');
   const [filterValue, setFilterValue] = useState('');
@@ -210,8 +215,6 @@ function ChartWrapper({
   const allDatasets = [...scatterDatasets];
 
   if (showPareto) {
-      // The points for the Pareto frontier should be the same as the points being plotted.
-      // This will use either the raw points or the aggregated points based on the current setting.
       const allPointsForPareto = scatterDatasets.flatMap(dataset => dataset.data);
 
       const paretoFrontier = findParetoFrontier(allPointsForPareto, paretoDirection);
@@ -239,7 +242,6 @@ function ChartWrapper({
         const dataset = chart.data.datasets[datasetIndex];
         if (dataset.type === 'scatter') {
             const pointData = dataset.data[index];
-            // Only trigger popup for non-aggregated points
             if (pointData.full && !pointData.full._aggregated) {
                 onPointClick(pointData.full, chart, elements[0]);
             }
@@ -255,7 +257,6 @@ function ChartWrapper({
             const point = context.raw;
             const fullData = point.full;
 
-            // Custom tooltip for aggregated points
             if (fullData && fullData._aggregated) {
                 return [
                     `${fullData._type} of ${fullData._count} points`,
@@ -281,7 +282,7 @@ function ChartWrapper({
   };
 
   return (
-    <div className="relative bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between h-[500px]">
+    <div className="relative bg-white rounded-lg shadow p-4 border border-gray-200 flex flex-col justify-between h-[500px] chart-wrapper-div">
       <button onClick={onFullscreen} className="text-sm text-black hover:underline absolute top-2 right-2 z-10">
         🔍 Fullscreen
       </button>
@@ -332,6 +333,25 @@ function ChartWrapper({
       <button onClick={onExport} className="mt-2 self-end px-2 py-1 text-xs bg-gray-300 text-black rounded hover:bg-gray-400 opacity-80">
         📥 Download as PNG
       </button>
+
+      {selectedPoint && selectedPointPosition && (
+        <div
+          className="absolute z-20 bg-white text-left border border-gray-300 shadow-lg rounded-md p-3 max-h-40 overflow-y-auto text-sm"
+          style={{ top: `${selectedPointPosition.y}px`, left: `${selectedPointPosition.x + 15}px` }}
+        >
+          <div className="flex justify-end mb-1">
+            <button
+              onClick={onClosePopup}
+              className="text-xs text-blue-500 hover:underline"
+            >
+              Close
+            </button>
+          </div>
+          {Object.entries(selectedPoint).map(([key, val]) => (
+            !key.startsWith('_') && <p key={key}><strong>{key}:</strong> {String(val)}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -346,6 +366,7 @@ function HomePage() {
   const [mode, setMode] = useState('select');
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [selectedPointPosition, setSelectedPointPosition] = useState(null);
+  const [selectedPointChartIndex, setSelectedPointChartIndex] = useState(null);
   const [fullscreenIndex, setFullscreenIndex] = useState(null);
   const [fullscreenPoint, setFullscreenPoint] = useState(null);
   const [fullscreenPointPos, setFullscreenPointPos] = useState(null);
@@ -409,11 +430,19 @@ function HomePage() {
     }
   };
 
-  const handlePointClick = (pointData, chart, element) => {
+  const handlePointClick = (pointData, chart, element, chartIndex) => {
     setSelectedPoint(pointData);
+    setSelectedPointChartIndex(chartIndex);
+
+    const chartWrapper = chart.canvas.closest('.chart-wrapper-div');
+    if (!chartWrapper) return;
+
+    const wrapperRect = chartWrapper.getBoundingClientRect();
     const canvasRect = chart.canvas.getBoundingClientRect();
-    const x = canvasRect.left + element.x + window.scrollX;
-    const y = canvasRect.top + element.y + window.scrollY;
+
+    const x = (canvasRect.left - wrapperRect.left) + element.x;
+    const y = (canvasRect.top - wrapperRect.top) + element.y;
+
     setSelectedPointPosition({ x, y });
   };
 
@@ -427,6 +456,9 @@ function HomePage() {
     setColorFields([]);
     setDataRows([]);
     setHeaders([]);
+    setSelectedPoint(null);
+    setSelectedPointChartIndex(null);
+    setSelectedPointPosition(null);
   };
 
   const pairs = generatePairs(selectedFields);
@@ -538,10 +570,17 @@ function HomePage() {
                 colorFields={colorFields}
                 allHeaders={headers}
                 colorMap={colorMap}
-                onPointClick={handlePointClick}
+                onPointClick={(pointData, chart, element) => handlePointClick(pointData, chart, element, index)}
                 onFullscreen={() => setFullscreenIndex(index)}
                 onExport={() => exportChartImage(index)}
                 chartRef={(el) => (chartRefs.current[index] = el)}
+                selectedPoint={selectedPointChartIndex === index ? selectedPoint : null}
+                selectedPointPosition={selectedPointChartIndex === index ? selectedPointPosition : null}
+                onClosePopup={() => {
+                  setSelectedPoint(null);
+                  setSelectedPointChartIndex(null);
+                  setSelectedPointPosition(null);
+                }}
               />
             ))}
           </div>
@@ -636,7 +675,7 @@ function HomePage() {
                       }}
                     />
                   </div>
-                  <ScrollableLegend datasets={datasets} />
+                  <ScrollableLegend datasets={datasets} fullscreen={true} />
                 </>
               );
             })()}
@@ -661,25 +700,6 @@ function HomePage() {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {selectedPoint && selectedPointPosition && (
-        <div
-          className="absolute z-50 bg-white text-left border border-gray-300 shadow-lg rounded-md p-3 max-h-40 overflow-y-auto text-sm"
-          style={{ top: selectedPointPosition.y, left: selectedPointPosition.x + 15 }}
-        >
-          <div className="flex justify-end mb-1">
-            <button
-              onClick={() => setSelectedPoint(null)}
-              className="text-xs text-blue-500 hover:underline"
-            >
-              Close
-            </button>
-          </div>
-          {Object.entries(selectedPoint).map(([key, val]) => (
-            <p key={key}><strong>{key}:</strong> {String(val)}</p>
-          ))}
         </div>
       )}
     </div>
