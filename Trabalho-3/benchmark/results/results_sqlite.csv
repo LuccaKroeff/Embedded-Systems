@@ -1,0 +1,31 @@
+app,platform,test,time,energy,edp
+sqlite,esp32,SETUP: Create Table,0.0165,0.0083,0.0001
+sqlite,esp32,SETUP: Create Index on Email,0.0069,0.0035,0.0000
+sqlite,esp32,LOAD: Insert 512 Users,0.8940,0.4470,0.3996
+sqlite,esp32,OLTP: Point-Select on Primary Key,0.1408,0.0704,0.0099
+sqlite,esp32,OLTP: Point-Select on Missing Key,0.1317,0.0658,0.0087
+sqlite,esp32,OLTP: Point-Select on Indexed Column,2.0521,1.0261,2.1056
+sqlite,esp32,OLTP: Simple Update,1.3814,0.6907,0.9541
+sqlite,esp32,OLAP: Aggregate with Group By,0.0560,0.0280,0.0016
+sqlite,esp32,OLAP: Aggregate with Filter,0.0604,0.0302,0.0018
+sqlite,esp32,CLEANUP: Drop Table,0.0113,0.0057,0.0001
+sqlite,Linux x86,SETUP: Create Table,0.0005,0.0032,0.0000
+sqlite,Linux x86,SETUP: Create Index on Email,0.0008,0.0000,0.0000
+sqlite,Linux x86,LOAD: Insert 512 Users,0.0023,0.0493,0.0001
+sqlite,Linux x86,OLTP: Point-Select on Primary Key,0.0012,0.0162,0.0000
+sqlite,Linux x86,OLTP: Point-Select on Missing Key,0.0009,0.0000,0.0000
+sqlite,Linux x86,OLTP: Point-Select on Indexed Column,0.0053,0.1546,0.0008
+sqlite,Linux x86,OLTP: Simple Update,0.0024,0.0482,0.0001
+sqlite,Linux x86,OLAP: Aggregate with Group By,0.0022,0.0289,0.0001
+sqlite,Linux x86,OLAP: Aggregate with Filter,0.0010,0.0043,0.0000
+sqlite,Linux x86,CLEANUP: Drop Table,0.0009,0.0216,0.0000
+sqlite,Android,SETUP: Create Table,0.0039,0.0237,0.0001
+sqlite,Android,SETUP: Create Index on Email,0.0007,0.0043,0.0000
+sqlite,Android,LOAD: Insert 512 Users,0.0414,0.2487,0.0103
+sqlite,Android,OLTP: Point-Select on Primary Key,0.0088,0.0525,0.0005
+sqlite,Android,OLTP: Point-Select on Missing Key,0.0025,0.0150,0.0000
+sqlite,Android,OLTP: Point-Select on Indexed Column,0.0547,0.3281,0.0179
+sqlite,Android,OLTP: Simple Update,0.0170,0.1018,0.0017
+sqlite,Android,OLAP: Aggregate with Group By,0.0169,0.1013,0.0017
+sqlite,Android,OLAP: Aggregate with Filter,0.0063,0.0380,0.0002
+sqlite,Android,CLEANUP: Drop Table,0.0012,0.0072,0.0000

@@ -1,59 +1,44 @@
 import subprocess
 import pexpect
-
-from cores import SQLiteCore, RocksDBCore
-from data import Result
+import pathlib
 
 from .base import BasePlatform
+from monitors import PexpectMonitor
 
 class ESP32(BasePlatform):
     name = "esp32"
-    supported_cores = [SQLiteCore]
     board_id = "esp32:esp32:esp32-poe-iso"
     tdp = 0.5
 
     def __init__(self, port="/dev/ttyUSB0"):
         self.port = port
-        self.sketch = None
+        self.app = None
         self.monitor = None
     
-    def deploy_core(self, core):
-        if core not in self.supported_cores:
-            raise ValueError("Core not supported")
-
-        self.compile(core.name)
-        self.upload(core.name)
-
-        self.core = core
-        self.monitor = pexpect.spawn("arduino-cli", ["monitor", "--port", self.port, "--config", "115200"])
-
-    def remove_core(self):
-        self.monitor.close()
-        self.core = None
-
-    def compile(self, sketch):
+    def compile(self, app, cwd=None):
         subprocess.run(
-            ["arduino-cli", "compile", "--fqbn", self.board_id, f"./code/sketches/{sketch}"],
+            ["arduino-cli", "compile", "--fqbn", self.board_id, app],
+            encoding="utf8",
+            cwd=cwd
+        )
+
+    def run(self, app, cwd=None):
+        if self.app is not None:
+            raise ValueError(f"Platform is alrady running app {self.app}")
+
+        # Compilation
+        app_path = str(pathlib.Path(cwd) / app)
+        subprocess.run(
+            ['arduino-cli', 'upload', '-p', self.port, '--fqbn', self.board_id, app_path],
             encoding="utf8",
         )
-    
-    def upload(self, sketch):    
-        subprocess.run(
-            ['arduino-cli', 'upload', '-p', self.port, '--fqbn', self.board_id, f"./code/sketches/{sketch}"],
-            encoding="utf8",
-        )
-    
-    def run_query(self, query):
-        cmd = query.command
-        iterations = str(query.iterations)
-        slots = str(query.slots)
-        self.monitor.expect("Q:")
-        self.monitor.send(cmd + "\n")
-        self.monitor.expect("I:")
-        self.monitor.send(iterations + "\n")
-        self.monitor.expect("S:")
-        self.monitor.send(slots + "\n")
-        self.monitor.expect("T: ")
-        time = float(self.monitor.readline().decode().strip())
 
-        return Result(query=query, core=self.core, time=time, energy=self.tdp*time)
+        # Running
+        self.app = app
+        self.monitor = PexpectMonitor(pexpect.spawn("arduino-cli", ["monitor", "--port", self.port, "--config", "115200"]))
+        return self.monitor
+
+    def clean(self, cwd=None):
+        self.monitor.finish()
+        self.app = None
+        self.monitor = None

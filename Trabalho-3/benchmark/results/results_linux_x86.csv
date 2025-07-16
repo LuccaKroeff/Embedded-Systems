@@ -1,0 +1,26 @@
+app,platform,test,time,energy,edp
+sqlite,Linux x86,SETUP: Create Table,0.0006,0.0000,0.0000
+sqlite,Linux x86,SETUP: Create Index on Email,0.0008,0.0097,0.0000
+sqlite,Linux x86,LOAD: Insert 100k Users,0.4321,9.2777,4.0088
+sqlite,Linux x86,OLTP: Point-Select on Primary Key,0.0288,0.3532,0.0102
+sqlite,Linux x86,OLTP: Point-Select on Missing Key,0.0273,0.3536,0.0097
+sqlite,Linux x86,OLTP: Point-Select on Indexed Column,0.0465,0.7169,0.0333
+sqlite,Linux x86,OLTP: Simple Update,0.0242,0.2733,0.0066
+sqlite,Linux x86,OLAP: Aggregate with Group By,4.8482,64.7328,313.8399
+sqlite,Linux x86,OLAP: Aggregate with Filter,0.7781,10.0945,7.8547
+sqlite,Linux x86,CLEANUP: Drop Table,0.0029,0.0200,0.0001
+duckdb,Linux x86,SETUP: Create Table,0.0012,0.0022,0.0000
+duckdb,Linux x86,SETUP: Create Index on Email,0.0127,0.1351,0.0017
+duckdb,Linux x86,LOAD: Insert 100k Users,11.7417,222.9100,2617.3497
+duckdb,Linux x86,OLTP: Point-Select on Primary Key,1.3154,21.3803,28.1237
+duckdb,Linux x86,OLTP: Point-Select on Missing Key,1.2681,20.5552,26.0658
+duckdb,Linux x86,OLTP: Point-Select on Indexed Column,1.2943,20.8759,27.0201
+duckdb,Linux x86,OLTP: Simple Update,1.2503,22.5947,28.2500
+duckdb,Linux x86,OLAP: Aggregate with Group By,0.0160,0.2130,0.0034
+duckdb,Linux x86,OLAP: Aggregate with Filter,0.0223,0.3345,0.0075
+duckdb,Linux x86,CLEANUP: Drop Table,0.0011,0.0211,0.0000
+rocksdb,Linux x86,LOAD: Insert 100k Users,0.0002,0.0000,0.0000
+rocksdb,Linux x86,OLTP: Point-Select on Existing Key,0.0003,0.0000,0.0000
+rocksdb,Linux x86,OLTP: Point-Select on Missing Key,0.0004,0.0000,0.0000
+rocksdb,Linux x86,OLTP: Simple Update,0.0003,0.0186,0.0000
+rocksdb,Linux x86,OLTP: Delete Key,0.0005,0.0000,0.0000

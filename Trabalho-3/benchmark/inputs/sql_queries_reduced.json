@@ -1,0 +1,172 @@
+[
+  {
+    "name": "SETUP: Create Table",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT);"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "1"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "SETUP: Create Index on Email",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "CREATE INDEX idx_email ON users (email);"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "1"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "LOAD: Insert 512 Users",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "INSERT INTO users (id, name, email) VALUES (%d, 'user%d', 'user%d@example.com');"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "512"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "3"
+      }
+    ]
+  },
+  {
+    "name": "OLTP: Point-Select on Primary Key",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "SELECT name, email FROM users WHERE id = 250;"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "100"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "OLTP: Point-Select on Missing Key",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "SELECT name, email FROM users WHERE id = 1000000;"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "100"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "OLTP: Point-Select on Indexed Column",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "SELECT name, email FROM users WHERE email = 'user123@example.com';"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "1000"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "OLTP: Simple Update",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "UPDATE users SET name = 'Updated Name' WHERE id = 150;"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "1000"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "OLAP: Aggregate with Group By",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "SELECT SUBSTR(email, INSTR(email, '@') + 1) as domain, COUNT(*) FROM users GROUP BY domain ORDER BY COUNT(*) DESC LIMIT 5;"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "10"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "OLAP: Aggregate with Filter",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "SELECT COUNT(*) FROM users WHERE name LIKE 'user1%';"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "10"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "CLEANUP: Drop Table",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "DROP TABLE users;"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "1"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  }
+]

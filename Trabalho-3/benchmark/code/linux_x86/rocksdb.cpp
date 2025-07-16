@@ -138,8 +138,7 @@ int main() {
         double joule = end_rapl_sysfs();
         clock_gettime(CLOCK_MONOTONIC, &end);
         double time_spent = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-        printf("T: %.4f\n", time_spent);
-        printf("En: %.4f\n", joule);
+        printf("Result: %.4f,%.4f,%.4f\n", time_spent, joule, time_spent*joule);
         fflush(stdout);
     }
 

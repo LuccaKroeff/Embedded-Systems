@@ -1,0 +1,87 @@
+[
+  {
+    "name": "LOAD: Insert 100k Users",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "PUT user%d user%d@example.com"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "100000"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "2"
+      }
+    ]
+  },
+  {
+    "name": "OLTP: Point-Select on Existing Key",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "GET user1500"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "10000"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "OLTP: Point-Select on Missing Key",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "GET user999999"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "10000"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "OLTP: Simple Update",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "PUT user1500 updated_user1500@example.com"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "10000"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  },
+  {
+    "name": "OLTP: Delete Key",
+    "inputs": [
+      {
+        "input_marker": "Q:",
+        "input_value": "DEL user1500"
+      },
+      {
+        "input_marker": "I:",
+        "input_value": "1"
+      },
+      {
+        "input_marker": "S:",
+        "input_value": "0"
+      }
+    ]
+  }
+]
